@@ -11,7 +11,7 @@ E_threshold = 0.021 #GeV energy threshold for visible hadron (ArgoNeut)
 E_threshold_exotic = E_threshold #Set same for now
 data_dir = '/pnfs/sbnd/persistent/users/brindenc/analyze_sbnd/nue/v09_43_00/data'
 savename = 'nuecc.pkl'
-savename_Np = 'nueccNP.pkl'
+savename_Np = 'nueccNp.pkl'
 savename_signal = 'nue.pkl'
 exotic_hadrons = [3112,321,4122,3222] #Make cuts on these?
 
@@ -64,7 +64,7 @@ print(f'Precut events {nuecc_df.index.drop_duplicates().shape[0]}')
 print(f'Cut non cc events {cut1.index.drop_duplicates().shape[0]}')
 print(f'Cut nu+e events {cut2.index.drop_duplicates().shape[0]}')
 print(f'Cut pion events {cut3.index.drop_duplicates().shape[0]}')
-print(f'Cut proton events (keep antiparticles) {cut4.index.drop_duplicates().shape[0]}')
+print(f'Cut proton events {cut4.index.drop_duplicates().shape[0]}')
 for i,pdg in enumerate(exotic_hadrons):
   print(f'Cut pdg {pdg} events {events_cut[i+5]}')
 
