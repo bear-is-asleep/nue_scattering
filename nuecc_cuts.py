@@ -1,97 +1,65 @@
 import sys
 sys.path.append('/sbnd/app/users/brindenc/mypython') #My utils path
 from bc_utils.CAFana import pic as CAFpic
-from bc_utils.utils import pic
+from bc_utils.CAFana import plotters as CAFplotters
+from bc_utils.utils import pic,plotters
 from time import time
 import numpy as np
 import pandas as pd
 import uproot
-
+import nuecc #Contains parameters
+import matplotlib.pyplot as plt
 
 
 #Constants/parameters
-pot1 = 1e21
+pot1 = nuecc.pot1
 pot2 = 20e20
-SEED = 42
-n = 2 #number of random universes
+SEED = nuecc.SEED
+n = nuecc.n #number of random universes
 ntrk = 50 #Size of shower confusion matrix
 nshw = 50 #Size of track confusion matrix
 E_threshold = 0.021 #GeV energy threshold for visible hadron (ArgoNeut)
 E_threshold_exotic = E_threshold #Set same for now
-DATA_DIR = '/sbnd/data/users/brindenc/analyze_sbnd/nue/v09_58_02/'
+DATA_DIR = nuecc.DATA_DIR
 #DATA_DIR = '../test_fcl/'
 savename = 'nuecc.pkl'
 savename_Np = 'nueccNp.pkl'
 savename_signal = 'nue.pkl'
-exotic_hadrons = [3112,321,4122,3222] #Make cuts on these?
+exotic_hadrons = [] #Make cuts on these? 3112,321,4122,3222
 print_results = False
 Etheta1 = 0.003 #Gev rad^2
 Etheta2 = 0.004 #Gev rad^2
 Etheta3 = 0.001 #Gev rad^2
 razzlecutoff = 0.6 #best score required to be electron
 suffix = '_full' #Add to end of all files to distinguish between test and full sample
+truthstudy = True
+recostudy = True
 
 t1 = time()
 
 #Load files
 
 #Write down CAF keys we want to use
-nreco_keys = ['nshw','ntrk','nstub'] #Count number of reco stubs
-nreco_keys = [CAFpic.recoprefix + key for key in nreco_keys]
-#reco_keys = [f'{CAFpic.shwprefix}razzle.electronScore']
-shw_keys = ['razzle.electronScore','bestplane_energy','dir.x','dir.y','dir.z',
-            'razzle.pdg']
-shw_keys = [CAFpic.shwprefix + key for key in shw_keys]
-#trk_keys = [f'{CAFpic.trkprefix}dazzle.electronScore']
-mcnu_keys = ['iscc','position.x','position.y','position.z']
-mcnu_keys = [CAFpic.mcnuprefix+key for key in mcnu_keys]
-mcprim_keys = ['pdg','gstatus','genT','genE','genp.x','genp.y','genp.z']
-mcprim_keys = [CAFpic.primprefix+key for key in mcprim_keys]
+nreco_keys = nuecc.nreco_keys
+shw_keys = nuecc.shw_keys
+mcnu_keys = nuecc.mcnu_keys
+mcprim_keys = nuecc.mcprim_keys
 
 #nu + e
 nue_tree1 = uproot.open(f'{DATA_DIR}CAFnue1{suffix}.root:recTree;1')
-CAFkeys = nue_tree1.keys()
-
-#mcnu_keys = [key for key in CAFkeys if CAFpic.mcnuprefix in key]
-#shw_keys = [key for key in CAFkeys if CAFpic.shwprefix in key]
-#trk_keys = [key for key in CAFkeys if CAFpic.trkprefix in key]
-#reco_keys = [key for key in CAFkeys if CAFpic.recoprefix in key]
 
 nue_mc = CAFpic.get_df(nue_tree1,mcnu_keys)
 nue_mcprim = CAFpic.get_df(nue_tree1,mcprim_keys)
 nue_nreco = CAFpic.get_df(nue_tree1,nreco_keys) #Make seperate tree to count reco objects
 nue_shw = CAFpic.get_df(nue_tree1,shw_keys)
 
-#nue_mc = [df.sort_index() for df in nue_mc]
-#nue_reco = [df.sort_index() for df in nue_reco]
-#nue_nreco = nue_nreco.sort_index()
-
 #nuecc
 nuecc_tree1 = uproot.open(f'{DATA_DIR}CAFnuecc1{suffix}.root:recTree;1')
-CAFkeys = nuecc_tree1.keys()
-
-#mcnu_keys = [key for key in CAFkeys if CAFpic.mcnuprefix in key]
-#shw_keys = [key for key in CAFkeys if CAFpic.shwprefix in key]
-#trk_keys = [key for key in CAFkeys if CAFpic.trkprefix in key]
-#reco_keys = [key for key in CAFkeys if CAFpic.recoprefix in key]
 
 nuecc_mc = CAFpic.get_df(nuecc_tree1,mcnu_keys)
 nuecc_mcprim = CAFpic.get_df(nuecc_tree1,mcprim_keys)
 nuecc_nreco = CAFpic.get_df(nuecc_tree1,nreco_keys) #Make seperate tree to count reco objects
 nuecc_shw = CAFpic.get_df(nuecc_tree1,shw_keys)
-
-#nuecc_mc = [df.sort_index() for df in nuecc_mc]
-#nuecc_nreco = nuecc_nreco.sort_index()
-#nuecc_reco = [df.sort_index() for df in nuecc_reco]
-
-#Find indeces with proper keys, since we have multiple dfs, we should find index with key we're interested
-#iscc_nuecc_index = CAFpic.find_index_with_key(nuecc_mc,f'{CAFpic.mcnuprefix}iscc') #same as truth pdg
-#razzle_nuecc_index = CAFpic.find_index_with_key(nuecc_reco,f'{CAFpic.shwprefix}razzle.electronScore')
-#pdg_nuecc_index = CAFpic.find_index_with_key(nuecc_mc,f'{CAFpic.primprefix}pdg')
-
-#iscc_nue_index = CAFpic.find_index_with_key(nue_mc,f'{CAFpic.mcnuprefix}iscc') #same as truth pdg
-#razzle_nue_index = CAFpic.find_index_with_key(nue_reco,f'{CAFpic.shwprefix}razzle.electronScore')
-#pdg_nue_index = CAFpic.find_index_with_key(nue_mc,f'{CAFpic.primprefix}pdg')
 
 #POT + event info
 pots = nuecc_tree1.arrays('rec.hdr.pot',library='pd')
@@ -123,6 +91,10 @@ events_cut_reco = np.zeros((2,n+2,len(columns_reco))) #Display number of events 
 shwconfusion = np.zeros((2,n+2,nshw,nshw)) #Confusion matrices for number of showers
 trkconfusion = np.zeros((2,n+2,ntrk,ntrk)) #Confusion matrices for number of tracks
 
+#Constants for plotting
+labels = [r'$\nu_e$',r'$\nu+e$']
+erecobins = np.arange(0,4,0.2)
+
 seeds = np.arange(n) #Get random seeds
 
 t2 = time()
@@ -140,9 +112,6 @@ for seed in seeds: #Iterate over n random universes, with different seed each ti
   #print('got indeces')
 
   #nuecc
-  #nuecc_mc_pot1 = [CAFpic.get_df_dropindeces(df,nuecc_drop_indeces) for df in nuecc_mc] #1st ele has most info
-  #nuecc_reco_pot1 = [CAFpic.get_df_dropindeces(df,nuecc_drop_indeces) for df in nuecc_reco] #1st ele has most info
-  
   nuecc_nreco_pot1 = CAFpic.get_df_dropindeces(nuecc_nreco,nuecc_drop_indeces)
   nuecc_mc_pot1 = CAFpic.get_df_dropindeces(nuecc_mc,nuecc_drop_indeces)
   nuecc_mcprim_pot1 = CAFpic.get_df_dropindeces(nuecc_mcprim,nuecc_drop_indeces)
@@ -150,8 +119,6 @@ for seed in seeds: #Iterate over n random universes, with different seed each ti
 
 
   #nue
-  #nue_mc_pot1 = [CAFpic.get_df_dropindeces(df,nue_drop_indeces) for df in nue_mc] 
-  #nue_reco_pot1 = [CAFpic.get_df_dropindeces(df,nue_drop_indeces) for df in nue_reco] 
   nue_nreco_pot1 = CAFpic.get_df_dropindeces(nue_nreco,nue_drop_indeces)
   nue_mc_pot1 = CAFpic.get_df_dropindeces(nue_mc,nue_drop_indeces)
   nue_mcprim_pot1 = CAFpic.get_df_dropindeces(nue_mcprim,nue_drop_indeces)
@@ -161,212 +128,432 @@ for seed in seeds: #Iterate over n random universes, with different seed each ti
   print(f'Time to drop indeces seed {seed*SEED}: {t6-t3:.2f} (s)')
 
   #TRUTH LEVEL
-  truthcut_iter = 0 #add one after each cut
+  if truthstudy:
+    truthcut_iter = 0 #add one after each cut
 
-  #Precut
-  events_cut[0,seed,truthcut_iter] = nuecc_mc_pot1.index.drop_duplicates().shape[0]
-  events_cut[1,seed,truthcut_iter] = nue_mc_pot1.index.drop_duplicates().shape[0]
-  truthcut_iter+=1
+    #Precut
+    precut_signal = nue_mc_pot1.index.drop_duplicates().shape[0] #Precut signal events
+    events_cut[0,seed,truthcut_iter] = nuecc_mc_pot1.index.drop_duplicates().shape[0]
+    events_cut[1,seed,truthcut_iter] = precut_signal
+    truthcut_iter+=1
 
-  #FV containment - truth interaction vertex
-  nuecc_fvindeces = CAFpic.FV_cut(nuecc_mc_pot1)
-  events_cut[0,seed,truthcut_iter] = len(nuecc_fvindeces)
-  nue_fvindeces = CAFpic.FV_cut(nue_mc_pot1)
-  events_cut[1,seed,truthcut_iter] = len(nue_fvindeces)
-  truthcut_iter+=1
-
-  #NC Cut
-  nuecc_mc_pot1 = CAFpic.get_df_keepindeces(nuecc_mc_pot1,nuecc_fvindeces)
-  cut1 = nuecc_mc_pot1[nuecc_mc_pot1.loc[:,f'{CAFpic.mcnuprefix}iscc'] == 1] #Keep only cc events
-  cut1_indeces = cut1.index.drop_duplicates()
-  events_cut[0,seed,truthcut_iter] = cut1_indeces.shape[0]
-  nuecc_mcprim_pot1 = CAFpic.get_df_keepindeces(nuecc_mcprim_pot1,cut1_indeces)
-
-  nue_mcprim_pot1 = CAFpic.get_df_keepindeces(nue_mcprim_pot1,nue_fvindeces)
-  events_cut[1,seed,truthcut_iter] = len(nue_fvindeces)
-  truthcut_iter+=1
-
-  #nu e scattering cut
-  cut2,_ = CAFpic.true_nue(nuecc_mcprim_pot1) #Drop nue scattering events
-  events_cut[0,seed,truthcut_iter] = cut2.index.drop_duplicates().shape[0]
-  events_cut[1,seed,truthcut_iter] = len(nue_fvindeces)
-  truthcut_iter+=1
-
-  #Charged pion
-  cut3,_ = CAFpic.cut_pdg_event(cut2,211,E_threshold=E_threshold) #Pions
-  events_cut[0,seed,truthcut_iter] = cut3.index.drop_duplicates().shape[0]
-  events_cut[1,seed,truthcut_iter] = len(nue_fvindeces)
-  truthcut_iter+=1
-
-  #Proton
-  cut4,_ = CAFpic.cut_pdg_event(cut3,2212,E_threshold=E_threshold) #Protons
-  events_cut[0,seed,truthcut_iter] = cut4.index.drop_duplicates().shape[0]
-  events_cut[1,seed,truthcut_iter] = len(nue_fvindeces)
-  truthcut_iter+=1
-
-  #Exotic particle cuts
-  cut5 = cut4.copy() #Set temporary df
-  for j,pdg in enumerate(exotic_hadrons): #this will iteravily cut hadrons
-    temp_cut,_ = CAFpic.cut_pdg_event(cut5,pdg,E_threshold=E_threshold_exotic)
-    cut5 = temp_cut.copy()
-    events_cut[0,seed,truthcut_iter] = cut5.index.drop_duplicates().shape[0]
+    #FV containment - truth interaction vertex
+    #print(f'FV{time()-t6}')
+    nuecc_fvindeces = CAFpic.FV_cut(nuecc_mc_pot1)
+    events_cut[0,seed,truthcut_iter] = len(nuecc_fvindeces)
+    nue_fvindeces = CAFpic.FV_cut(nue_mc_pot1)
     events_cut[1,seed,truthcut_iter] = len(nue_fvindeces)
     truthcut_iter+=1
 
-  #Print events cut
-  if print_results:
-    print(f'Precut events {nuecc_mc_pot1[0].index.drop_duplicates().shape[0]}')
-    print(f'Cut non cc events {cut1.index.drop_duplicates().shape[0]}')
-    print(f'Cut nu+e events {cut2.index.drop_duplicates().shape[0]}')
-    print(f'Cut pion events {cut3.index.drop_duplicates().shape[0]}')
-    print(f'Cut proton events {cut4.index.drop_duplicates().shape[0]}')
-    for i,pdg in enumerate(exotic_hadrons):
-      print(f'Cut pdg {pdg} events {events_cut[0,seed,i+5]}')
-  
-  #Calc thetae and Etheta^2
-  nuecc_1 = CAFpic.calc_thetat(cut5) #Use momentum method
-  nuecc_2 = CAFpic.calc_Etheta(nuecc_1)
+    #NC Cut
+    #print(f'NC{time()-t6}')
+    #Precut plots
+    if seed == 0:
+      CAFplotters.back_sig_hist([nue_mc_pot1,nuecc_mc_pot1],labels,f'{CAFpic.mcnuprefix}iscc',precut_signal,xlabel='GENIE CC',bins=2,alpha=0.8)
+      plotters.save_plot(f'cc_precut{seed}')
 
-  nue_1 = CAFpic.calc_thetat(nue_mcprim_pot1) #Use momentum method
-  nue_2 = CAFpic.calc_Etheta(nue_1)
-  
-  #Etheta cuts
-  #Calc cuts
-  nuecc_cut1,_ = CAFpic.make_cuts(nuecc_2,Etheta=Etheta1)
-  events_cut[0,seed,truthcut_iter] = CAFpic.number_events(nuecc_cut1)
-  nue_cut1,_ = CAFpic.make_cuts(nue_2,Etheta=Etheta1)
-  events_cut[1,seed,truthcut_iter] = CAFpic.number_events(nue_cut1)
-  truthcut_iter+=1
+    #Do cuts
+    nuecc_mc_pot1 = CAFpic.get_df_keepindeces(nuecc_mc_pot1,nuecc_fvindeces)
+    cut1 = nuecc_mc_pot1[nuecc_mc_pot1.loc[:,f'{CAFpic.mcnuprefix}iscc'] == 1] #Keep only cc events
+    cut1_indeces = cut1.index.drop_duplicates()
+    events_cut[0,seed,truthcut_iter] = cut1_indeces.shape[0]
+    nuecc_mcprim_pot1 = CAFpic.get_df_keepindeces(nuecc_mcprim_pot1,cut1_indeces)
 
-  nuecc_cut2,_ = CAFpic.make_cuts(nuecc_2,Etheta=Etheta2)
-  events_cut[0,seed,truthcut_iter] = CAFpic.number_events(nuecc_cut2)
-  nue_cut2,_ = CAFpic.make_cuts(nue_2,Etheta=Etheta2)
-  events_cut[1,seed,truthcut_iter] = CAFpic.number_events(nue_cut2)
-  truthcut_iter+=1
+    nue_mcprim_pot1 = CAFpic.get_df_keepindeces(nue_mcprim_pot1,nue_fvindeces)
+    events_cut[1,seed,truthcut_iter] = len(nue_fvindeces)
+    truthcut_iter+=1
 
-  nuecc_cut3,_ = CAFpic.make_cuts(nuecc_2,Etheta=Etheta3)
-  events_cut[0,seed,truthcut_iter] = CAFpic.number_events(nuecc_cut3)
-  nue_cut3,_ = CAFpic.make_cuts(nue_2,Etheta=Etheta3)
-  events_cut[1,seed,truthcut_iter] = CAFpic.number_events(nue_cut3)
-  truthcut_iter+=1
+    if seed == 0:
+      ax = CAFplotters.back_sig_hist([nue_mc_pot1,cut1],labels,f'{CAFpic.mcnuprefix}iscc',precut_signal,xlabel='GENIE CC',bins=2,alpha=0.8)
+      ax.text(0.2,40,r"Don't drop $\nu+e$ CC events")
+      plotters.save_plot(f'cc_postcut{seed}')
 
-  t4 = time()
-  print(f'Truth cuts seed {seed*SEED}: {t4-t3:.1f} (s)')
+    #nu e scattering cut
+    #print(f'nue{time()-t6}')
+    cut2,_ = CAFpic.true_nue(nuecc_mcprim_pot1) #Drop nue scattering events
+    events_cut[0,seed,truthcut_iter] = cut2.index.drop_duplicates().shape[0]
+    events_cut[1,seed,truthcut_iter] = len(nue_fvindeces)
+    truthcut_iter+=1
 
-  #POT
-  events_cut[:,seed,truthcut_iter] = pot1
+    #Charged pion
+    #print(f'pi{time()-t6}')
+    cut3,_ = CAFpic.cut_pdg_event(cut2,211,E_threshold=E_threshold) #Pions
+    events_cut[0,seed,truthcut_iter] = cut3.index.drop_duplicates().shape[0]
+    events_cut[1,seed,truthcut_iter] = len(nue_fvindeces)
+    truthcut_iter+=1
+
+    #Proton
+    #print(f'proton{time()-t6}')
+    cut4,_ = CAFpic.cut_pdg_event(cut3,2212,E_threshold=E_threshold) #Protons
+    events_cut[0,seed,truthcut_iter] = cut4.index.drop_duplicates().shape[0]
+    events_cut[1,seed,truthcut_iter] = len(nue_fvindeces)
+    truthcut_iter+=1
+
+    #Exotic particle cuts
+    cut5 = cut4.copy() #Set temporary df
+    for j,pdg in enumerate(exotic_hadrons): #this will iteravily cut hadrons
+      temp_cut,_ = CAFpic.cut_pdg_event(cut5,pdg,E_threshold=E_threshold_exotic)
+      cut5 = temp_cut.copy()
+      events_cut[0,seed,truthcut_iter] = cut5.index.drop_duplicates().shape[0]
+      events_cut[1,seed,truthcut_iter] = len(nue_fvindeces)
+      truthcut_iter+=1
+
+    #Print events cut
+    if print_results:
+      print(f'Precut events {nuecc_mc_pot1[0].index.drop_duplicates().shape[0]}')
+      print(f'Cut non cc events {cut1.index.drop_duplicates().shape[0]}')
+      print(f'Cut nu+e events {cut2.index.drop_duplicates().shape[0]}')
+      print(f'Cut pion events {cut3.index.drop_duplicates().shape[0]}')
+      print(f'Cut proton events {cut4.index.drop_duplicates().shape[0]}')
+      for i,pdg in enumerate(exotic_hadrons):
+        print(f'Cut pdg {pdg} events {events_cut[0,seed,i+5]}')
+    
+    #Calc thetae and Etheta^2
+    #print(f'Calc{time()-t6}')
+    nuecc_1 = CAFpic.calc_thetat(cut5) #Use momentum method
+    nuecc_2 = CAFpic.calc_Etheta(nuecc_1)
+    nuecc_e = nuecc_2[abs(nuecc_2.loc[:,f'{CAFpic.primprefix}pdg']) == 11]
+
+    nue_1 = CAFpic.calc_thetat(nue_mcprim_pot1) #Use momentum method
+    nue_2 = CAFpic.calc_Etheta(nue_1)
+    nue_e = nue_2[abs(nue_2.loc[:,f'{CAFpic.primprefix}pdg']) == 11]
+    
+    #Etheta cuts
+    #Calc cuts
+    if seed == 0:
+      ax = CAFplotters.back_sig_hist([nue_e,nuecc_e],labels,f'{CAFpic.primprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$',alpha=0.8)
+      ethetamin, ethetamax = ax.get_xlim()
+      plotters.save_plot(f'etheta1_precut{seed}')
+      plt.close()
+      ax = CAFplotters.back_sig_hist([nue_e,nuecc_e],labels,f'{CAFpic.primprefix}genE',precut_signal,xlabel=r'$E_e$',alpha=0.8,
+        bins=erecobins)
+      plotters.save_plot(f'e1_precut{seed}')
+      emin, emax = ax.get_xlim()
+      plt.close()
+      ax = CAFplotters.back_sig_hist([nue_e,nuecc_e],labels,f'{CAFpic.primprefix}thetal',precut_signal,xlabel=r'$\theta_e$',alpha=0.8)
+      thetamin, thetamax = ax.get_xlim()
+      plotters.save_plot(f'theta1_precut{seed}')
+      plt.close()
+    nuecc_cut1,_ = CAFpic.make_cuts(nuecc_2,Etheta=Etheta1)
+    events_cut[0,seed,truthcut_iter] = CAFpic.number_events(nuecc_cut1)
+    nue_cut1,_ = CAFpic.make_cuts(nue_2,Etheta=Etheta1)
+    events_cut[1,seed,truthcut_iter] = CAFpic.number_events(nue_cut1)
+    truthcut_iter+=1
+
+    #Get just electrons
+    nue_cute = nue_cut1[abs(nue_cut1.loc[:,f'{CAFpic.primprefix}pdg']) == 11]
+    nuecc_cute = nuecc_cut1[abs(nuecc_cut1.loc[:,f'{CAFpic.primprefix}pdg']) == 11]
+
+    if seed == 0:
+      ax = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$',alpha=0.8)
+      ax.set_xlim([ethetamin,ethetamax])
+      plotters.save_plot(f'etheta1_cut{seed}')
+      plt.close()
+      ax = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}genE',precut_signal,xlabel=r'$E_e$',alpha=0.8,
+        bins=erecobins)
+      ax.set_xlim([emin,emax])
+      plotters.save_plot(f'e1_cut{seed}')
+      plt.close()
+      ax = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}thetal',precut_signal,xlabel=r'$\theta_e$',alpha=0.8)
+      ax.set_xlim([thetamin,thetamax])
+      plotters.save_plot(f'theta1_cut{seed}')
+      plt.close()
+
+    nuecc_cut2,_ = CAFpic.make_cuts(nuecc_2,Etheta=Etheta2)
+    events_cut[0,seed,truthcut_iter] = CAFpic.number_events(nuecc_cut2)
+    nue_cut2,_ = CAFpic.make_cuts(nue_2,Etheta=Etheta2)
+    events_cut[1,seed,truthcut_iter] = CAFpic.number_events(nue_cut2)
+    truthcut_iter+=1
+
+    #Get just electrons
+    nue_cute = nue_cut2[abs(nue_cut2.loc[:,f'{CAFpic.primprefix}pdg']) == 11]
+    nuecc_cute = nuecc_cut2[abs(nuecc_cut2.loc[:,f'{CAFpic.primprefix}pdg']) == 11]
+
+    if seed == 0:
+      ax = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$',alpha=0.8)
+      ax.set_xlim([ethetamin,ethetamax])
+      plotters.save_plot(f'etheta2_cut{seed}')
+      plt.close()
+      ax = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}genE',precut_signal,xlabel=r'$E_e$',alpha=0.8,
+        bins=erecobins)
+      ax.set_xlim([emin,emax])
+      plotters.save_plot(f'e2_cut{seed}')
+      plt.close()
+      ax = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}thetal',precut_signal,xlabel=r'$\theta_e$',alpha=0.8,
+        bins=erecobins)
+      ax.set_xlim([thetamin,thetamax])
+      plotters.save_plot(f'theta2_cut{seed}')
+      plt.close()
+
+    nuecc_cut3,_ = CAFpic.make_cuts(nuecc_2,Etheta=Etheta3)
+    events_cut[0,seed,truthcut_iter] = CAFpic.number_events(nuecc_cut3)
+    nue_cut3,_ = CAFpic.make_cuts(nue_2,Etheta=Etheta3)
+    events_cut[1,seed,truthcut_iter] = CAFpic.number_events(nue_cut3)
+    truthcut_iter+=1
+
+    #Get just electrons
+    nue_cute = nue_cut3[abs(nue_cut3.loc[:,f'{CAFpic.primprefix}pdg']) == 11]
+    nuecc_cute = nuecc_cut3[abs(nuecc_cut3.loc[:,f'{CAFpic.primprefix}pdg']) == 11]
+
+    if seed == 0:
+      ax = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$',alpha=0.8)
+      ax.set_xlim([ethetamin,ethetamax])
+      plotters.save_plot(f'etheta3_cut{seed}')
+      plt.close()
+      ax = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}genE',precut_signal,xlabel=r'$E_e$',alpha=0.8,
+        bins=erecobins)
+      ax.set_xlim([emin,emax])
+      plotters.save_plot(f'e3_cut{seed}')
+      plt.close()
+      ax = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}thetal',precut_signal,xlabel=r'$\theta_e$',alpha=0.8)
+      ax.set_xlim([thetamin,thetamax])
+      plotters.save_plot(f'theta3_cut{seed}')
+      plt.close()
+
+    t4 = time()
+    print(f'Truth cuts seed {seed*SEED}: {t4-t3:.1f} (s)')
+
+    #POT
+    events_cut[:,seed,truthcut_iter] = pot1
 
   #RECO LEVEL
-  recocut_iter = 0 #add one to this each time a cut is made
+  if recostudy:
+    recocut_iter = 0 #add one to this each time a cut is made
+    t4 = time()
 
-  #Revamp modified dataframes - can optimize later, but probably not necessary
-  #nuecc
-  #nuecc_mc_pot1 = [CAFpic.get_df_dropindeces(df,nuecc_drop_indeces) for df in nuecc_mc] #1st ele has most info
-  #nuecc_reco_pot1 = [CAFpic.get_df_dropindeces(df,nuecc_drop_indeces) for df in nuecc_reco] #1st ele has most info
-  #nuecc_nreco_pot1 = CAFpic.get_df_dropindeces(nuecc_nreco,nuecc_drop_indeces)
-  #nuecc_mc_pot1 = CAFpic.get_df_dropindeces(nuecc_mc,nuecc_drop_indeces)
-  nuecc_mcprim_pot1 = CAFpic.get_df_dropindeces(nuecc_mcprim,nuecc_drop_indeces)
-  #nuecc_shw_pot1 = CAFpic.get_df_dropindeces(nuecc_shw,nuecc_drop_indeces)
-  
-  #nue
-  #nue_mc_pot1 = [CAFpic.get_df_dropindeces(df,nue_drop_indeces) for df in nue_mc] 
-  #nue_reco_pot1 = [CAFpic.get_df_dropindeces(df,nue_drop_indeces) for df in nue_reco] 
-  #nue_nreco_pot1 = CAFpic.get_df_dropindeces(nue_nreco,nue_drop_indeces)
-  #nue_mc_pot1 = CAFpic.get_df_dropindeces(nue_mc,nue_drop_indeces)
-  nue_mcprim_pot1 = CAFpic.get_df_dropindeces(nue_mcprim,nue_drop_indeces)
-  #nue_shw_pot1 = CAFpic.get_df_dropindeces(nue_shw,nue_drop_indeces)
+    #Revamp modified dataframes
+    #nuecc
+    nuecc_mcprim_pot1 = CAFpic.get_df_dropindeces(nuecc_mcprim,nuecc_drop_indeces)
+    
+    #nue
+    nue_mcprim_pot1 = CAFpic.get_df_dropindeces(nue_mcprim,nue_drop_indeces)
 
-  #Precut
-  events_cut_reco[0,seed,recocut_iter] = nuecc_nreco_pot1.index.drop_duplicates().shape[0]
-  events_cut_reco[1,seed,recocut_iter] = nue_nreco_pot1.index.drop_duplicates().shape[0]
-  recocut_iter+=1
+    #Precut
+    events_cut_reco[0,seed,recocut_iter] = nuecc_nreco_pot1.index.drop_duplicates().shape[0]
+    events_cut_reco[1,seed,recocut_iter] = nue_nreco_pot1.index.drop_duplicates().shape[0]
+    recocut_iter+=1
 
-  #Get confusion matrices
-  shwconfusion[0,seed,:,:] = CAFpic.get_shw_confusion_matrix(nuecc_nreco_pot1,nuecc_mcprim_pot1,n=nshw)
-  trkconfusion[0,seed,:,:] = CAFpic.get_trk_confusion_matrix(nuecc_nreco_pot1,nuecc_mcprim_pot1,n=ntrk)
-  
-  shwconfusion[1,seed,:,:] = CAFpic.get_shw_confusion_matrix(nue_nreco_pot1,nue_mcprim_pot1,n=nshw)
-  trkconfusion[1,seed,:,:] = CAFpic.get_trk_confusion_matrix(nue_nreco_pot1,nue_mcprim_pot1,n=ntrk)
-  #stubconfusion?
+    #Get confusion matrices
+    shwconfusion[0,seed,:,:] = CAFpic.get_shw_confusion_matrix(nuecc_nreco_pot1,nuecc_mcprim_pot1,n=nshw)
+    trkconfusion[0,seed,:,:] = CAFpic.get_trk_confusion_matrix(nuecc_nreco_pot1,nuecc_mcprim_pot1,n=ntrk)
+    
+    shwconfusion[1,seed,:,:] = CAFpic.get_shw_confusion_matrix(nue_nreco_pot1,nue_mcprim_pot1,n=nshw)
+    trkconfusion[1,seed,:,:] = CAFpic.get_trk_confusion_matrix(nue_nreco_pot1,nue_mcprim_pot1,n=ntrk)
+    #stubconfusion?
 
-  #FV containment - truth interaction vertex
-  nuecc_fvindeces = CAFpic.FV_cut(nuecc_mc_pot1)
-  events_cut_reco[0,seed,recocut_iter] = len(nuecc_fvindeces)
-  nue_fvindeces = CAFpic.FV_cut(nue_mc_pot1)
-  events_cut_reco[1,seed,recocut_iter] = len(nue_fvindeces)
-  recocut_iter+=1
+    #FV containment - truth interaction vertex
+    nuecc_fvindeces = CAFpic.FV_cut(nuecc_mc_pot1)
+    events_cut_reco[0,seed,recocut_iter] = len(nuecc_fvindeces)
+    nue_fvindeces = CAFpic.FV_cut(nue_mc_pot1)
+    events_cut_reco[1,seed,recocut_iter] = len(nue_fvindeces)
+    recocut_iter+=1
 
-  #Number showers
-  cut1,_ = CAFpic.cut_nshws(nuecc_nreco_pot1.loc[nuecc_fvindeces],1) #Keep only events with one reconstructed shower
-  events_cut_reco[0,seed,recocut_iter] = cut1.index.drop_duplicates().shape[0]
-  
-  cut1_nue,_ = CAFpic.cut_nshws(nue_nreco_pot1.loc[nue_fvindeces],1) #Keep only events with one reconstructed shower
-  events_cut_reco[1,seed,recocut_iter] = cut1_nue.index.drop_duplicates().shape[0]
-  recocut_iter+=1
+    #Number showers
+    if seed == 0:
+      ax = CAFplotters.back_sig_hist([nue_nreco_pot1,nuecc_nreco_pot1],labels,f'{CAFpic.recoprefix}nshw',precut_signal,xlabel=r'$n_{shw}$',alpha=0.8,
+        bins=[0,1,2,3,4,5])
+      ax.set_xlim([0,5])
+      plotters.save_plot(f'nshw_precut')
+      plt.close()
 
-  #Number tracks
-  cut2,_ = CAFpic.cut_ntrks(cut1,0) #Keep only events with one reconstructed shower
-  events_cut_reco[0,seed,recocut_iter] = cut2.index.drop_duplicates().shape[0]
-  cut2_indeces = cut2.index.drop_duplicates()
-  nuecc_shw_pot1 = CAFpic.get_df_keepindeces(nuecc_shw_pot1,cut2_indeces)
+    cut1,_ = CAFpic.cut_nshws(nuecc_nreco_pot1.loc[nuecc_fvindeces],1) #Keep only events with one reconstructed shower
+    events_cut_reco[0,seed,recocut_iter] = cut1.index.drop_duplicates().shape[0]
+    
+    cut1_nue,_ = CAFpic.cut_nshws(nue_nreco_pot1.loc[nue_fvindeces],1) #Keep only events with one reconstructed shower
+    events_cut_reco[1,seed,recocut_iter] = cut1_nue.index.drop_duplicates().shape[0]
+    recocut_iter+=1
 
-  cut2_nue,_ = CAFpic.cut_ntrks(cut1_nue,0) #Keep only events with one reconstructed shower
-  events_cut_reco[1,seed,recocut_iter] = cut2_nue.index.drop_duplicates().shape[0]
-  cut2_indeces = cut2_nue.index.drop_duplicates()
-  nue_shw_pot1 = CAFpic.get_df_keepindeces(nue_shw_pot1,cut2_indeces)
-  recocut_iter+=1
+    if seed == 0:
+      ax = CAFplotters.back_sig_hist([cut1_nue,cut1],labels,f'{CAFpic.recoprefix}nshw',precut_signal,xlabel=r'$n_{shw}$',alpha=0.8,
+        bins=[0,1,2,3,4,5])
+      ax.set_xlim([0,5])
+      plotters.save_plot(f'nshw_cut')
+      plt.close()
 
-  #print(nue_reco_pot1[razzle_nuecc_index].index.drop_duplicates())
+    #Number tracks
+    if seed == 0:
+      ax = CAFplotters.back_sig_hist([cut1_nue,cut1],labels,f'{CAFpic.recoprefix}ntrk',precut_signal,xlabel=r'$n_{trk}$',alpha=0.8,
+        bins=[0,1,2,3,4,5])
+      ax.set_xlim([0,5])
+      plotters.save_plot(f'ntrk_precut')
+      plt.close()
 
-  #Shower energy
-  nuecc_shwE = CAFpic.cut_recoE(nuecc_shw_pot1)
-  events_cut_reco[0,seed,recocut_iter] = len(nuecc_shwE)
+    cut2,_ = CAFpic.cut_ntrks(cut1,0) #Keep only events with one reconstructed shower
+    events_cut_reco[0,seed,recocut_iter] = cut2.index.drop_duplicates().shape[0]
+    cut2_indeces = cut2.index.drop_duplicates()
+    nuecc_shw_pot1 = CAFpic.get_df_keepindeces(nuecc_shw_pot1,cut2_indeces)
 
-  nue_shwE = CAFpic.cut_recoE(nue_shw_pot1)
-  events_cut_reco[1,seed,recocut_iter] = len(nue_shwE)
-  recocut_iter+=1
+    cut2_nue,_ = CAFpic.cut_ntrks(cut1_nue,0) #Keep only events with one reconstructed shower
+    events_cut_reco[1,seed,recocut_iter] = cut2_nue.index.drop_duplicates().shape[0]
+    cut2_indeces = cut2_nue.index.drop_duplicates()
+    nue_shw_pot1 = CAFpic.get_df_keepindeces(nue_shw_pot1,cut2_indeces)
+    recocut_iter+=1
 
-  #Electron razzle score
-  cut3 = CAFpic.cut_razzlescore(nuecc_shw_pot1.loc[nuecc_shwE],cutoff=razzlecutoff)
-  events_cut_reco[0,seed,recocut_iter] = cut3.index.drop_duplicates().shape[0]
-  
-  #print(nue_shwE,nue_reco_pot1[razzle_nuecc_index].index.drop_duplicates())
-  cut3_nue = CAFpic.cut_razzlescore(nue_shw_pot1.loc[nue_shwE],cutoff=razzlecutoff)
-  events_cut_reco[1,seed,recocut_iter] = cut3_nue.index.drop_duplicates().shape[0]
-  recocut_iter+=1
+    if seed == 0:
+      ax = CAFplotters.back_sig_hist([cut2_nue,cut2],labels,f'{CAFpic.recoprefix}ntrk',precut_signal,xlabel=r'$n_{trk}$',alpha=0.8,
+        bins=[0,1,2,3,4,5])
+      ax.set_xlim([0,5])
+      plotters.save_plot(f'ntrk_cut')
+      plt.close()
 
-  #Calc thetae and Etheta^2
-  nuecc_1 = CAFpic.calc_thetat(cut3,return_key=f'{CAFpic.shwprefix}thetal',px_key=f'{CAFpic.shwprefix}dir.x',
-    py_key=f'{CAFpic.shwprefix}dir.y',pz_key=f'{CAFpic.shwprefix}dir.z') #Use direction method
-  nuecc_2 = CAFpic.calc_Etheta(nuecc_1,return_key=f'{CAFpic.shwprefix}Etheta2',E_key=f'{CAFpic.shwprefix}bestplane_energy',
-    theta_l_key=f'{CAFpic.shwprefix}thetal')
-  
-  nue_1 = CAFpic.calc_thetat(cut3_nue,return_key=f'{CAFpic.shwprefix}thetal',px_key=f'{CAFpic.shwprefix}dir.x',
-    py_key=f'{CAFpic.shwprefix}dir.y',pz_key=f'{CAFpic.shwprefix}dir.z') #Use direction method
-  nue_2 = CAFpic.calc_Etheta(nue_1,return_key=f'{CAFpic.shwprefix}Etheta2',E_key=f'{CAFpic.shwprefix}bestplane_energy',
-    theta_l_key=f'{CAFpic.shwprefix}thetal')
+    #Shower energy
+    if seed == 0:
+      CAFplotters.back_sig_hist([nue_shw_pot1,nuecc_shw_pot1],labels,f'{CAFpic.shwprefix}bestplane_energy',precut_signal,
+      xlabel=r'$E_{reco}$',alpha=0.8,bins=erecobins)
+      plotters.save_plot(f'ereco_precut')
+      plt.close()
+    nuecc_shwE = CAFpic.cut_recoE(nuecc_shw_pot1)
+    events_cut_reco[0,seed,recocut_iter] = len(nuecc_shwE)
 
-  #Etheta2 cuts
-  nuecc_cut1,_ = CAFpic.make_reco_cuts(nuecc_2,Etheta=Etheta1)
-  events_cut_reco[0,seed,recocut_iter] = CAFpic.number_events(nuecc_cut1)
-  nue_cut1,_ = CAFpic.make_reco_cuts(nue_2,Etheta=Etheta1)
-  events_cut_reco[1,seed,recocut_iter] = CAFpic.number_events(nue_cut1)
-  recocut_iter+=1
+    nue_shwE = CAFpic.cut_recoE(nue_shw_pot1)
+    events_cut_reco[1,seed,recocut_iter] = len(nue_shwE)
+    recocut_iter+=1
 
-  nuecc_cut2,_ = CAFpic.make_reco_cuts(nuecc_2,Etheta=Etheta2)
-  events_cut_reco[0,seed,recocut_iter] = CAFpic.number_events(nuecc_cut2)
-  nue_cut2,_ = CAFpic.make_reco_cuts(nue_2,Etheta=Etheta2)
-  events_cut_reco[1,seed,recocut_iter] = CAFpic.number_events(nue_cut2)
-  recocut_iter+=1
+    if seed == 0:
+      CAFplotters.back_sig_hist([nue_shw_pot1.loc[nue_shwE],nuecc_shw_pot1.loc[nuecc_shwE]],labels,f'{CAFpic.shwprefix}bestplane_energy',precut_signal,
+      xlabel=r'$E_{reco}$',alpha=0.8,bins=erecobins)
+      plotters.save_plot(f'ereco_cut')
+      plt.close()
 
-  nuecc_cut3,_ = CAFpic.make_reco_cuts(nuecc_2,Etheta=Etheta3)
-  events_cut_reco[0,seed,recocut_iter] = CAFpic.number_events(nuecc_cut3)
-  nue_cut3,_ = CAFpic.make_reco_cuts(nue_2,Etheta=Etheta3)
-  events_cut_reco[1,seed,recocut_iter] = CAFpic.number_events(nue_cut3)
-  recocut_iter+=1
+    #Electron razzle score
+    bins = np.arange(0,1,0.1)
+    if seed == 0:
+      ax = CAFplotters.back_sig_hist([nue_shw_pot1.loc[nue_shwE],nuecc_shw_pot1.loc[nuecc_shwE]],labels,f'{CAFpic.shwprefix}razzle.electronScore',precut_signal,
+      xlabel=r'Electron Razzle Score',alpha=0.8,bins=bins)
+      ax.set_xlim([0,1])
+      plotters.save_plot(f'erazzle_precut')
+      plt.close()
+    cut3 = CAFpic.cut_razzlescore(nuecc_shw_pot1.loc[nuecc_shwE],cutoff=razzlecutoff)
+    events_cut_reco[0,seed,recocut_iter] = cut3.index.drop_duplicates().shape[0]
+    
+    #print(nue_shwE,nue_reco_pot1[razzle_nuecc_index].index.drop_duplicates())
+    cut3_nue = CAFpic.cut_razzlescore(nue_shw_pot1.loc[nue_shwE],cutoff=razzlecutoff)
+    events_cut_reco[1,seed,recocut_iter] = cut3_nue.index.drop_duplicates().shape[0]
+    recocut_iter+=1
 
-  t5 = time()
-  print(f'Reco cuts seed {seed*SEED}: {t5-t4:.1f} (s)')
+    if seed == 0:
+      ax = CAFplotters.back_sig_hist([cut3_nue,cut3],labels,f'{CAFpic.shwprefix}razzle.electronScore',precut_signal,
+      xlabel=r'Electron Razzle Score',alpha=0.8,bins=bins)
+      ax.set_xlim([0,1])
+      plotters.save_plot(f'erazzle_cut')
+      plt.close()
+
+    #Calc thetae and Etheta^2
+    nuecc_1 = CAFpic.calc_thetat(cut3,return_key=f'{CAFpic.shwprefix}thetal',px_key=f'{CAFpic.shwprefix}dir.x',
+      py_key=f'{CAFpic.shwprefix}dir.y',pz_key=f'{CAFpic.shwprefix}dir.z') #Use direction method
+    nuecc_2 = CAFpic.calc_Etheta(nuecc_1,return_key=f'{CAFpic.shwprefix}Etheta2',E_key=f'{CAFpic.shwprefix}bestplane_energy',
+      theta_l_key=f'{CAFpic.shwprefix}thetal')
+    
+    nue_1 = CAFpic.calc_thetat(cut3_nue,return_key=f'{CAFpic.shwprefix}thetal',px_key=f'{CAFpic.shwprefix}dir.x',
+      py_key=f'{CAFpic.shwprefix}dir.y',pz_key=f'{CAFpic.shwprefix}dir.z') #Use direction method
+    nue_2 = CAFpic.calc_Etheta(nue_1,return_key=f'{CAFpic.shwprefix}Etheta2',E_key=f'{CAFpic.shwprefix}bestplane_energy',
+      theta_l_key=f'{CAFpic.shwprefix}thetal')
+
+    #Etheta2 cuts - should be looking at just single shower events
+
+    #print(nue_2.head(20),nuecc_2.head(20))
+
+    if seed == 0:
+      ax = CAFplotters.back_sig_hist([nue_2,nuecc_2],labels,f'{CAFpic.shwprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$',alpha=0.8)
+      ethetamin,ethetamax = ax.get_xlim()
+      plotters.save_plot(f'reco_etheta_precut{seed}')
+      plt.close()
+
+      bins = np.arange(0,0.005,0.001)
+      ax = CAFplotters.back_sig_hist([nue_2,nuecc_2],labels,f'{CAFpic.shwprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$',alpha=0.8,
+        bins=bins)
+      ethetamin_zoom,ethetamax_zoom = ax.get_xlim()
+      plotters.save_plot(f'reco_etheta_precut_zoom{seed}')
+      plt.close()
+      #CAFplotters.back_sig_hist([nue_2,nuecc_2],labels,f'{CAFpic.shwprefix}bestplane_energy',precut_signal,xlabel=r'$E_e$',alpha=0.8)
+      #plotters.save_plot(f'reco_e_precut{seed}')
+      ax = CAFplotters.back_sig_hist([nue_2,nuecc_2],labels,f'{CAFpic.shwprefix}thetal',precut_signal,xlabel=r'$\theta_e$',alpha=0.8)
+      thetamin,thetamax = ax.get_xlim()
+      plotters.save_plot(f'reco_theta_precut{seed}')
+      plt.close()
+
+    nuecc_cut1,_ = CAFpic.make_reco_cuts(nuecc_2,Etheta=Etheta1)
+    events_cut_reco[0,seed,recocut_iter] = CAFpic.number_events(nuecc_cut1)
+    nue_cut1,_ = CAFpic.make_reco_cuts(nue_2,Etheta=Etheta1)
+    events_cut_reco[1,seed,recocut_iter] = CAFpic.number_events(nue_cut1)
+    recocut_iter+=1
+
+    if seed == 0:
+      ax = CAFplotters.back_sig_hist([nue_cut1,nuecc_cut1],labels,f'{CAFpic.shwprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$',alpha=0.8)
+      ax.set_xlim([ethetamin,ethetamax])
+      plotters.save_plot(f'reco_etheta_cut1{seed}')
+      plt.close()
+
+      ax = CAFplotters.back_sig_hist([nue_cut1,nuecc_cut1],labels,f'{CAFpic.shwprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$',alpha=0.8,
+        bins=bins)
+      ax.set_xlim([ethetamin_zoom,ethetamax_zoom])
+      plotters.save_plot(f'reco_etheta_cut1_zoom{seed}')
+      plt.close()
+      #CAFplotters.back_sig_hist([nue_cut1,nuecc_cut1],labels,f'{CAFpic.shwprefix}bestplane_energy',precut_signal,xlabel=r'$E_e$',alpha=0.8)
+      #plotters.save_plot(f'reco_e_cut1{seed}')
+      #plt.close()
+      ax = CAFplotters.back_sig_hist([nue_cut1,nuecc_cut1],labels,f'{CAFpic.shwprefix}thetal',precut_signal,xlabel=r'$\theta_e$',alpha=0.8)
+      ax.set_xlim([thetamin,thetamax])
+      plotters.save_plot(f'reco_theta_cut1{seed}')
+      plt.close()
+
+    nuecc_cut2,_ = CAFpic.make_reco_cuts(nuecc_2,Etheta=Etheta2)
+    events_cut_reco[0,seed,recocut_iter] = CAFpic.number_events(nuecc_cut2)
+    nue_cut2,_ = CAFpic.make_reco_cuts(nue_2,Etheta=Etheta2)
+    events_cut_reco[1,seed,recocut_iter] = CAFpic.number_events(nue_cut2)
+    recocut_iter+=1
+
+    if seed == 0:
+      ax = CAFplotters.back_sig_hist([nue_cut2,nuecc_cut2],labels,f'{CAFpic.shwprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$',alpha=0.8)
+      ax.set_xlim([ethetamin,ethetamax])
+      plotters.save_plot(f'reco_etheta_cut2{seed}')
+      plt.close()
+
+      ax = CAFplotters.back_sig_hist([nue_cut2,nuecc_cut2],labels,f'{CAFpic.shwprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$',alpha=0.8,
+        bins=bins)
+      ax.set_xlim([ethetamin_zoom,ethetamax_zoom])
+      plotters.save_plot(f'reco_etheta_cut2_zoom{seed}')
+      plt.close()
+      #CAFplotters.back_sig_hist([nue_cut2,nuecc_cut2],labels,f'{CAFpic.shwprefix}bestplane_energy',precut_signal,xlabel=r'$E_e$',alpha=0.8)
+      #plotters.save_plot(f'reco_e_cut2{seed}')
+      #plt.close()
+      ax = CAFplotters.back_sig_hist([nue_cut2,nuecc_cut2],labels,f'{CAFpic.shwprefix}thetal',precut_signal,xlabel=r'$\theta_e$',alpha=0.8)
+      ax.set_xlim([thetamin,thetamax])
+      plotters.save_plot(f'reco_theta_cut2{seed}')
+      plt.close()
+
+    nuecc_cut3,_ = CAFpic.make_reco_cuts(nuecc_2,Etheta=Etheta3)
+    events_cut_reco[0,seed,recocut_iter] = CAFpic.number_events(nuecc_cut3)
+    nue_cut3,_ = CAFpic.make_reco_cuts(nue_2,Etheta=Etheta3)
+    events_cut_reco[1,seed,recocut_iter] = CAFpic.number_events(nue_cut3)
+    recocut_iter+=1
+
+    if seed == 0:
+      ax = CAFplotters.back_sig_hist([nue_cut3,nuecc_cut3],labels,f'{CAFpic.shwprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$',alpha=0.8)
+      ax.set_xlim([ethetamin,ethetamax])
+      plotters.save_plot(f'reco_etheta_cut3{seed}')
+      plt.close()
+
+      ax = CAFplotters.back_sig_hist([nue_cut3,nuecc_cut3],labels,f'{CAFpic.shwprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$',alpha=0.8,
+        bins=bins)
+      ax.set_xlim([ethetamin_zoom,ethetamax_zoom])
+      plotters.save_plot(f'reco_etheta_cut3_zoom{seed}')
+      plt.close()
+      #CAFplotters.back_sig_hist([nue_cut3,nuecc_cut3],labels,f'{CAFpic.shwprefix}bestplane_energy',precut_signal,xlabel=r'$E_e$',alpha=0.8)
+      #plotters.save_plot(f'reco_e_cut3{seed}')
+      #plt.close()
+      ax = CAFplotters.back_sig_hist([nue_cut3,nuecc_cut3],labels,f'{CAFpic.shwprefix}thetal',precut_signal,xlabel=r'$\theta_e$',alpha=0.8)
+      ax.set_xlim([thetamin,thetamax])
+      plotters.save_plot(f'reco_theta_cut3{seed}')
+      plt.close()
+
+    
+
+    #POT
+    events_cut_reco[:,seed,recocut_iter] = pot1
+
+    t5 = time()
+    print(f'Reco cuts seed {seed*SEED}: {t5-t4:.1f} (s)')
 
 #Save cut information
 for row in range(2): #Iterate by rows, one for each sample
@@ -374,35 +561,38 @@ for row in range(2): #Iterate by rows, one for each sample
     sample = 'nuecc'
   if row == 1:
     sample = 'nue'
-  events_cut[row,-2,:] = np.std(events_cut[row,:-2],axis=0) #standard deviation
-  events_cut[row,-1,:] = np.mean(events_cut[row,:-2],axis=0) #mean
-  cuts_df = pd.DataFrame(events_cut[row],columns=columns)
-  cuts_df.to_csv(f'{DATA_DIR}truth_cuts_{sample}{suffix}.csv')
+  if truthstudy:
+    events_cut[row,-2,:] = np.std(events_cut[row,:-2],axis=0) #standard deviation
+    events_cut[row,-1,:] = np.mean(events_cut[row,:-2],axis=0) #mean
+    cuts_df = pd.DataFrame(events_cut[row],columns=columns)
+    cuts_df.to_csv(f'{DATA_DIR}truth_cuts_{sample}{suffix}.csv')
 
-  events_cut_reco[row,-2,:] = np.std(events_cut_reco[row,:-2],axis=0) #standard deviation
-  events_cut_reco[row,-1,:] = np.mean(events_cut_reco[row,:-2],axis=0) #mean
-  cutsreco_df = pd.DataFrame(events_cut_reco[row],columns=columns_reco)
-  cutsreco_df.to_csv(f'{DATA_DIR}reco_cuts_{sample}{suffix}.csv')
+  if recostudy:
+    events_cut_reco[row,-2,:] = np.std(events_cut_reco[row,:-2],axis=0) #standard deviation
+    events_cut_reco[row,-1,:] = np.mean(events_cut_reco[row,:-2],axis=0) #mean
+    cutsreco_df = pd.DataFrame(events_cut_reco[row],columns=columns_reco)
+    cutsreco_df.to_csv(f'{DATA_DIR}reco_cuts_{sample}{suffix}.csv')
 
   #Save confusion matrix info
-  for i in range(nshw):
-    for j in range(nshw):
-      shwconfusion[row,-2,i,j] = np.std(shwconfusion[row,:-2,i,j]) #Mean value of ith jth comp, exclude last two since these are for std,mean
-      shwconfusion[row,-1,i,j] = np.mean(shwconfusion[row,:-2,i,j]) #Mean value of ith jth comp, exclude last two since these are for std,mean 
+  if recostudy:
+    for i in range(nshw):
+      for j in range(nshw):
+        shwconfusion[row,-2,i,j] = np.std(shwconfusion[row,:-2,i,j]) #Mean value of ith jth comp, exclude last two since these are for std,mean
+        shwconfusion[row,-1,i,j] = np.mean(shwconfusion[row,:-2,i,j]) #Mean value of ith jth comp, exclude last two since these are for std,mean 
 
-  #sns.heatmap(shwconfusion[n], annot=True)
-  np.savetxt(f'{DATA_DIR}shwconfusion_std_{sample}{suffix}.csv',shwconfusion[row,-2],delimiter=',')
-  np.savetxt(f'{DATA_DIR}shwconfusion_mean_{sample}{suffix}.csv',shwconfusion[row,-1],delimiter=',')
-  np.savetxt(f'{DATA_DIR}shwconfusion_n0_{sample}{suffix}.csv',shwconfusion[row,0],delimiter=',')
+    #sns.heatmap(shwconfusion[n], annot=True)
+    np.savetxt(f'{DATA_DIR}shwconfusion_std_{sample}{suffix}.csv',shwconfusion[row,-2],delimiter=',')
+    np.savetxt(f'{DATA_DIR}shwconfusion_mean_{sample}{suffix}.csv',shwconfusion[row,-1],delimiter=',')
+    np.savetxt(f'{DATA_DIR}shwconfusion_n0_{sample}{suffix}.csv',shwconfusion[row,0],delimiter=',')
 
-  for i in range(ntrk):
-    for j in range(ntrk):
-      trkconfusion[row,-2,i,j] = np.std(trkconfusion[row,:-2,i,j]) #Mean value of ith jth comp, exclude last two since these are for std,mean
-      trkconfusion[row,-1,i,j] = np.mean(trkconfusion[row,:-2,i,j]) #Mean value of ith jth comp, exclude last two since these are for std,mean 
+    for i in range(ntrk):
+      for j in range(ntrk):
+        trkconfusion[row,-2,i,j] = np.std(trkconfusion[row,:-2,i,j]) #Mean value of ith jth comp, exclude last two since these are for std,mean
+        trkconfusion[row,-1,i,j] = np.mean(trkconfusion[row,:-2,i,j]) #Mean value of ith jth comp, exclude last two since these are for std,mean 
 
-  np.savetxt(f'{DATA_DIR}trkconfusion_std_{sample}{suffix}.csv',trkconfusion[row,-2],delimiter=',')
-  np.savetxt(f'{DATA_DIR}trkconfusion_mean_{sample}{suffix}.csv',trkconfusion[row,-1],delimiter=',')
-  np.savetxt(f'{DATA_DIR}trkconfusion_n0_{sample}{suffix}.csv',trkconfusion[row,0],delimiter=',')
+    np.savetxt(f'{DATA_DIR}trkconfusion_std_{sample}{suffix}.csv',trkconfusion[row,-2],delimiter=',')
+    np.savetxt(f'{DATA_DIR}trkconfusion_mean_{sample}{suffix}.csv',trkconfusion[row,-1],delimiter=',')
+    np.savetxt(f'{DATA_DIR}trkconfusion_n0_{sample}{suffix}.csv',trkconfusion[row,0],delimiter=',')
 
 
 
