@@ -5,9 +5,9 @@ from bc_utils.utils import pic
 
 
 DATA_DIR = '/sbnd/data/users/brindenc/analyze_sbnd/nue/v09_58_02/'
-pot1 = 1e20
+pot1 = 1e21
 SEED = 1
-n = 2 #Number of universes
+n = 100 #Number of universes
 
 #Write down CAF keys we want to use
 nreco_keys = ['nshw',

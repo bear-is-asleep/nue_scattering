@@ -18,16 +18,17 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from numpy import genfromtxt
 from datetime import date
+plt.style.use(['science','no-latex'])
 
 #Params import
 import nuecc
 
 #Constants
-DATA_DIR = nuecc.DATA_DIR
+DATA_DIR = '/sbnd/data/users/brindenc/analyze_sbnd/nue/v09_58_02/pot1e21_n10/'
 pot1 = nuecc.pot1
 SEED = nuecc.SEED
 n = nuecc.n
-
+n=10
 #pot1=1e19
 #n=2
 
@@ -66,44 +67,44 @@ truthcolumns = [1,2,3,4,5,6,7,8]
 #truthcolumns = np.arange(1,np.shape(nue_truth_cuts)[1],13)
 #print(recocolumns,truthcolumns,np.shape(nue_truth_cuts))
 
-legend_labels=[r'$\nu + e$',r'$\nu_e$CC']
+legend_labels=[r'$\nu + e$',r'$\nu_e$CC 0p0$\pi^\pm$']
 reco_dfs = [nue_reco_cuts,nuecc_reco_cuts] #Signal df must be first
 truth_dfs = [nue_truth_cuts,nuecc_truth_cuts] #Signal df must be first
 
 #Reco
 ax = CAFplotters.plot_background_cuts(reco_dfs,legend_labels,recocolumns,
-  r'Reconstructed Event Selection for $\nu+e$ Events'+'\n'+f'POT = {pot1:.1e}'+r' $N$ = '+f'{n:.0f}')
+  r'Reconstructed Event Selection '+f'(POT = {pot1:.1e}'+r' $N$ = '+f'{n:.0f})')
 plotters.save_plot(f'reco_background_cuts{suffix}_N{n}')
 plt.close()
 ax = CAFplotters.plot_background_cuts([reco_dfs[0]],[legend_labels[0]],recocolumns,
-  r'Reconstructed Event Selection for $\nu+e$ Events'+'\n'+f'POT = {pot1:.1e}'+r' $N$ = '+f'{n:.0f}')
+  r'Reconstructed Event Selection '+f'(POT = {pot1:.1e}'+r' $N$ = '+f'{n:.0f})',color='blue')
 plotters.save_plot(f'nuereco_background_cuts{suffix}_N{n}')
 plt.close()
 ax = CAFplotters.plot_background_cuts([reco_dfs[1]],[legend_labels[1]],recocolumns,
-  r'Reconstructed Event Selection for $\nu+e$ Events'+'\n'+f'POT = {pot1:.1e}'+r' $N$ = '+f'{n:.0f}')
+  r'Reconstructed Event Selection '+f'(POT = {pot1:.1e}'+r' $N$ = '+f'{n:.0f})',color='green')
 plotters.save_plot(f'nueccreco_background_cuts{suffix}_N{n}')
 plt.close()
 CAFplotters.plot_efficiency_purity(reco_dfs,recocolumns,
-  r'Reconstructed Event Selection for $\nu+e$ Events'+'\n'+f'POT = {pot1:.1e}'+r' $N$ = '+f'{n:.0f}',event=-1)
+  r'Reconstructed Event Selection '+f'(POT = {pot1:.1e}'+r' $N$ = '+f'{n:.0f})',event=-1)
 plotters.save_plot(f'reco_pe{suffix}_N{n}')
 plt.close()
 
 #Truth
 CAFplotters.plot_background_cuts(truth_dfs,legend_labels,truthcolumns,
-  r'Truth Event Selection for $\nu+e$ Events'+'\n'+f'POT = {pot1:.1e}'+r' $N$ = '+f'{n:.0f}')
+  r'Truth Event Selection '+f'(POT = {pot1:.1e}'+r' $N$ = '+f'{n:.0f})')
 plotters.save_plot(f'truth_background_cuts{suffix}_N{n}')
 plt.close()
 ax = CAFplotters.plot_background_cuts([truth_dfs[0]],[legend_labels[0]],truthcolumns,
-  r'Truth Event Selection for $\nu+e$ Events'+'\n'+f'POT = {pot1:.1e}'+r' $N$ = '+f'{n:.0f}')
+  r'Truth Event Selection '+f'(POT = {pot1:.1e}'+r' $N$ = '+f'{n:.0f})',color='blue')
 ax.set_xlim([0,None])
 plotters.save_plot(f'nuetruth_background_cuts{suffix}_N{n}')
 plt.close()
 ax = CAFplotters.plot_background_cuts([truth_dfs[1]],[legend_labels[1]],truthcolumns,
-  r'Truth Event Selection for $\nu+e$ Events'+'\n'+f'POT = {pot1:.1e}'+r' $N$ = '+f'{n:.0f}')
+  r'Truth Event Selection '+f'(POT = {pot1:.1e}'+r' $N$ = '+f'{n:.0f})',color='green')
 plotters.save_plot(f'nuecctruth_background_cuts{suffix}_N{n}')
 plt.close()
 CAFplotters.plot_efficiency_purity(truth_dfs,truthcolumns,
-  r'Truth Event Selection for $\nu+e$ Events'+'\n'+f'POT = {pot1:.1e}'+r' $N$ = '+f'{n:.0f}',event=-1)
+  r'Truth Event Selection '+f'(POT = {pot1:.1e}'+r' $N$ = '+f'{n:.0f})',event=-1)
 plotters.save_plot(f'truth_pe{suffix}_N{n}')
 plt.close()
 

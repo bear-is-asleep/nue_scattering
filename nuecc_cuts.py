@@ -1,3 +1,4 @@
+#!/sbnd/data/users/brindenc/.local/bin/python3.9
 import sys
 sys.path.append('/sbnd/app/users/brindenc/mypython') #My utils path
 from bc_utils.CAFana import pic as CAFpic
@@ -9,6 +10,7 @@ import pandas as pd
 import uproot
 import nuecc #Contains parameters
 import matplotlib.pyplot as plt
+plt.style.use(['science','no-latex'])
 
 
 #Constants/parameters
@@ -91,9 +93,15 @@ events_cut_reco = np.zeros((2,n+2,len(columns_reco))) #Display number of events 
 shwconfusion = np.zeros((2,n+2,nshw,nshw)) #Confusion matrices for number of showers
 trkconfusion = np.zeros((2,n+2,ntrk,ntrk)) #Confusion matrices for number of tracks
 
+shwconfusion_cut1 = np.zeros((2,n+2,nshw,nshw)) #Confusion matrices for number of showers
+trkconfusion_cut1 = np.zeros((2,n+2,ntrk,ntrk)) #Confusion matrices for number of tracks
+
 #Constants for plotting
-labels = [r'$\nu_e$',r'$\nu+e$']
-erecobins = np.arange(0,4,0.2)
+labels = [r'$\nu+e$',r'$\nu_e$']
+erecobins = np.arange(0,4,0.1)
+ethetabins = np.arange(0,0.005,0.001)
+thetabins = np.arange(0,0.4,0.05)
+
 
 seeds = np.arange(n) #Get random seeds
 
@@ -112,17 +120,16 @@ for seed in seeds: #Iterate over n random universes, with different seed each ti
   #print('got indeces')
 
   #nuecc
-  nuecc_nreco_pot1 = CAFpic.get_df_dropindeces(nuecc_nreco,nuecc_drop_indeces)
-  nuecc_mc_pot1 = CAFpic.get_df_dropindeces(nuecc_mc,nuecc_drop_indeces)
-  nuecc_mcprim_pot1 = CAFpic.get_df_dropindeces(nuecc_mcprim,nuecc_drop_indeces)
-  nuecc_shw_pot1 = CAFpic.get_df_dropindeces(nuecc_shw,nuecc_drop_indeces)
-
+  nuecc_nreco_pot1 = CAFpic.get_df_dropindeces(nuecc_nreco,nuecc_drop_indeces).sort_index()
+  nuecc_mc_pot1 = CAFpic.get_df_dropindeces(nuecc_mc,nuecc_drop_indeces).sort_index()
+  nuecc_mcprim_pot1 = CAFpic.get_df_dropindeces(nuecc_mcprim,nuecc_drop_indeces).sort_index()
+  nuecc_shw_pot1 = CAFpic.get_df_dropindeces(nuecc_shw,nuecc_drop_indeces).sort_index()
 
   #nue
-  nue_nreco_pot1 = CAFpic.get_df_dropindeces(nue_nreco,nue_drop_indeces)
-  nue_mc_pot1 = CAFpic.get_df_dropindeces(nue_mc,nue_drop_indeces)
-  nue_mcprim_pot1 = CAFpic.get_df_dropindeces(nue_mcprim,nue_drop_indeces)
-  nue_shw_pot1 = CAFpic.get_df_dropindeces(nue_shw,nue_drop_indeces)
+  nue_nreco_pot1 = CAFpic.get_df_dropindeces(nue_nreco,nue_drop_indeces).sort_index()
+  nue_mc_pot1 = CAFpic.get_df_dropindeces(nue_mc,nue_drop_indeces).sort_index()
+  nue_mcprim_pot1 = CAFpic.get_df_dropindeces(nue_mcprim,nue_drop_indeces).sort_index()
+  nue_shw_pot1 = CAFpic.get_df_dropindeces(nue_shw,nue_drop_indeces).sort_index()
   
   t6 = time()
   print(f'Time to drop indeces seed {seed*SEED}: {t6-t3:.2f} (s)')
@@ -148,13 +155,16 @@ for seed in seeds: #Iterate over n random universes, with different seed each ti
     #NC Cut
     #print(f'NC{time()-t6}')
     #Precut plots
-    if seed == 0:
-      CAFplotters.back_sig_hist([nue_mc_pot1,nuecc_mc_pot1],labels,f'{CAFpic.mcnuprefix}iscc',precut_signal,xlabel='GENIE CC',bins=2,alpha=0.8)
+    if seed < 2:
+      ax,_ = CAFplotters.back_sig_hist([nue_mc_pot1,nuecc_mc_pot1],labels,f'{CAFpic.mcnuprefix}iscc',precut_signal,xlabel='GENIE CC',bins=2,alpha=0.8)
       plotters.save_plot(f'cc_precut{seed}')
+      ccmin,ccmax = ax.get_ylim()
 
     #Do cuts
     nuecc_mc_pot1 = CAFpic.get_df_keepindeces(nuecc_mc_pot1,nuecc_fvindeces)
     cut1 = nuecc_mc_pot1[nuecc_mc_pot1.loc[:,f'{CAFpic.mcnuprefix}iscc'] == 1] #Keep only cc events
+    ncevent = nuecc_mc_pot1[nuecc_mc_pot1.loc[:,f'{CAFpic.mcnuprefix}iscc'] == 0].index[0] #Get single nc event
+    print(f'nuecc nc ind: {ncevent}')
     cut1_indeces = cut1.index.drop_duplicates()
     events_cut[0,seed,truthcut_iter] = cut1_indeces.shape[0]
     nuecc_mcprim_pot1 = CAFpic.get_df_keepindeces(nuecc_mcprim_pot1,cut1_indeces)
@@ -163,9 +173,10 @@ for seed in seeds: #Iterate over n random universes, with different seed each ti
     events_cut[1,seed,truthcut_iter] = len(nue_fvindeces)
     truthcut_iter+=1
 
-    if seed == 0:
-      ax = CAFplotters.back_sig_hist([nue_mc_pot1,cut1],labels,f'{CAFpic.mcnuprefix}iscc',precut_signal,xlabel='GENIE CC',bins=2,alpha=0.8)
-      ax.text(0.2,40,r"Don't drop $\nu+e$ CC events")
+    if seed < 2:
+      ax,_ = CAFplotters.back_sig_hist([nue_mc_pot1,cut1],labels,f'{CAFpic.mcnuprefix}iscc',precut_signal,xlabel='GENIE CC',bins=2,alpha=0.8)
+      #ax.text(0.2,40,r"Don't drop $\nu+e$ CC events")
+      ax.set_ylim([ccmin,ccmax])
       plotters.save_plot(f'cc_postcut{seed}')
 
     #nu e scattering cut
@@ -214,28 +225,42 @@ for seed in seeds: #Iterate over n random universes, with different seed each ti
     nuecc_2 = CAFpic.calc_Etheta(nuecc_1)
     nuecc_e = nuecc_2[abs(nuecc_2.loc[:,f'{CAFpic.primprefix}pdg']) == 11]
 
+
     nue_1 = CAFpic.calc_thetat(nue_mcprim_pot1) #Use momentum method
     nue_2 = CAFpic.calc_Etheta(nue_1)
     nue_e = nue_2[abs(nue_2.loc[:,f'{CAFpic.primprefix}pdg']) == 11]
     
     #Etheta cuts
     #Calc cuts
-    if seed == 0:
-      ax = CAFplotters.back_sig_hist([nue_e,nuecc_e],labels,f'{CAFpic.primprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$',alpha=0.8)
+    if seed < 2:
+      ax,etheta_zoomout_bins = CAFplotters.back_sig_hist([nue_e,nuecc_e],labels,f'{CAFpic.primprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$ [GeV rad$^2$]',alpha=0.8)
       ethetamin, ethetamax = ax.get_xlim()
+      ethetamin_y, ethetamax_y = ax.get_ylim()
       plotters.save_plot(f'etheta1_precut{seed}')
+      ax,_ = CAFplotters.back_sig_hist([nue_e,nuecc_e],labels,f'{CAFpic.primprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$ [GeV rad$^2$]',
+        annotate=False,alpha=0.8,bins=ethetabins)
+      ax.set_xlim([0,0.005])
+      plotters.save_plot(f'etheta1_precut_zoom{seed}')
       plt.close()
-      ax = CAFplotters.back_sig_hist([nue_e,nuecc_e],labels,f'{CAFpic.primprefix}genE',precut_signal,xlabel=r'$E_e$',alpha=0.8,
+      ax,_ = CAFplotters.back_sig_hist([nue_e,nuecc_e],labels,f'{CAFpic.primprefix}genE',precut_signal,xlabel=r'$E_e$ [GeV]',alpha=0.8,
         bins=erecobins)
       plotters.save_plot(f'e1_precut{seed}')
       emin, emax = ax.get_xlim()
+      emin_y,emax_y = ax.get_ylim()
       plt.close()
-      ax = CAFplotters.back_sig_hist([nue_e,nuecc_e],labels,f'{CAFpic.primprefix}thetal',precut_signal,xlabel=r'$\theta_e$',alpha=0.8)
+      ax,_ = CAFplotters.back_sig_hist([nue_e,nuecc_e],labels,f'{CAFpic.primprefix}thetal',precut_signal,xlabel=r'$\theta_e$ [rad]',alpha=0.8)
       thetamin, thetamax = ax.get_xlim()
+      thetamin_y,thetamax_y = ax.get_ylim()
       plotters.save_plot(f'theta1_precut{seed}')
       plt.close()
+      ax,_ = CAFplotters.back_sig_hist([nue_e,nuecc_e],labels,f'{CAFpic.primprefix}thetal',precut_signal,xlabel=r'$\theta_e$ [rad]',alpha=0.8,
+        bins=thetabins)
+      plotters.save_plot(f'theta1_precut_zoom{seed}')
+      plt.close()
+    print('nuecc')
     nuecc_cut1,_ = CAFpic.make_cuts(nuecc_2,Etheta=Etheta1)
     events_cut[0,seed,truthcut_iter] = CAFpic.number_events(nuecc_cut1)
+    print('nue')
     nue_cut1,_ = CAFpic.make_cuts(nue_2,Etheta=Etheta1)
     events_cut[1,seed,truthcut_iter] = CAFpic.number_events(nue_cut1)
     truthcut_iter+=1
@@ -244,23 +269,38 @@ for seed in seeds: #Iterate over n random universes, with different seed each ti
     nue_cute = nue_cut1[abs(nue_cut1.loc[:,f'{CAFpic.primprefix}pdg']) == 11]
     nuecc_cute = nuecc_cut1[abs(nuecc_cut1.loc[:,f'{CAFpic.primprefix}pdg']) == 11]
 
-    if seed == 0:
-      ax = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$',alpha=0.8)
-      ax.set_xlim([ethetamin,ethetamax])
+    if seed < 2:
+      ax,_ = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$ [GeV rad$^2$]',alpha=0.8,
+        bins=ethetabins)
+      #ax.set_xlim([ethetamin,ethetamax])
       plotters.save_plot(f'etheta1_cut{seed}')
+      ax.set_ylim([ethetamin_y,ethetamax_y])
+      plotters.save_plot(f'etheta1_cut_zoom{seed}')
       plt.close()
-      ax = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}genE',precut_signal,xlabel=r'$E_e$',alpha=0.8,
+      ax,_ = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}genE',precut_signal,xlabel=r'$E_e$ [GeV]',alpha=0.8,
         bins=erecobins)
       ax.set_xlim([emin,emax])
       plotters.save_plot(f'e1_cut{seed}')
+      ax.set_ylim([emin_y,emax_y])
+      plotters.save_plot(f'e1_cut_zoomy{seed}')
       plt.close()
-      ax = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}thetal',precut_signal,xlabel=r'$\theta_e$',alpha=0.8)
+      ax,_ = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}thetal',precut_signal,xlabel=r'$\theta_e$ [rad]',alpha=0.8,
+        bins=thetabins)
       ax.set_xlim([thetamin,thetamax])
       plotters.save_plot(f'theta1_cut{seed}')
       plt.close()
+      ax,_ = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}thetal',precut_signal,xlabel=r'$\theta_e$ [rad]',alpha=0.8,
+        bins=np.arange(0,0.4,0.05))
+      plotters.save_plot(f'theta1_cut_zoom{seed}')
+      ax.set_ylim([thetamin_y,thetamax_y])
+      plotters.save_plot(f'theta1_cut_zoomxy{seed}')
+      plt.close()
 
+    print('nuecc')
     nuecc_cut2,_ = CAFpic.make_cuts(nuecc_2,Etheta=Etheta2)
     events_cut[0,seed,truthcut_iter] = CAFpic.number_events(nuecc_cut2)
+    print('nue')
+    
     nue_cut2,_ = CAFpic.make_cuts(nue_2,Etheta=Etheta2)
     events_cut[1,seed,truthcut_iter] = CAFpic.number_events(nue_cut2)
     truthcut_iter+=1
@@ -269,24 +309,39 @@ for seed in seeds: #Iterate over n random universes, with different seed each ti
     nue_cute = nue_cut2[abs(nue_cut2.loc[:,f'{CAFpic.primprefix}pdg']) == 11]
     nuecc_cute = nuecc_cut2[abs(nuecc_cut2.loc[:,f'{CAFpic.primprefix}pdg']) == 11]
 
-    if seed == 0:
-      ax = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$',alpha=0.8)
-      ax.set_xlim([ethetamin,ethetamax])
+    if seed < 2:
+      ax,_ = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$ [GeV rad$^2$]',alpha=0.8,
+        bins=ethetabins)
+      #ax.set_xlim([ethetamin,ethetamax])
       plotters.save_plot(f'etheta2_cut{seed}')
+      ax.set_ylim([ethetamin_y,ethetamax_y])
+      plotters.save_plot(f'etheta2_cut_zoom{seed}')
       plt.close()
-      ax = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}genE',precut_signal,xlabel=r'$E_e$',alpha=0.8,
+      ax,_ = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}genE',precut_signal,xlabel=r'$E_e$ [GeV]',alpha=0.8,
         bins=erecobins)
       ax.set_xlim([emin,emax])
       plotters.save_plot(f'e2_cut{seed}')
+      ax.set_ylim([emin_y,emax_y])
+      plotters.save_plot(f'e2_cut_zoomy{seed}')
       plt.close()
-      ax = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}thetal',precut_signal,xlabel=r'$\theta_e$',alpha=0.8,
+      ax,_ = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}thetal',precut_signal,xlabel=r'$\theta_e$ [rad]',alpha=0.8,
         bins=erecobins)
       ax.set_xlim([thetamin,thetamax])
       plotters.save_plot(f'theta2_cut{seed}')
       plt.close()
+      ax,_ = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}thetal',precut_signal,xlabel=r'$\theta_e$ [rad]',alpha=0.8,
+        bins=np.arange(0,0.4,0.05))
+      plotters.save_plot(f'theta2_cut_zoom{seed}')
+      ax.set_ylim([thetamin_y,thetamax_y])
+      plotters.save_plot(f'theta2_cut_zoomxy{seed}')
+      plt.close()
+
+    print('nuecc')
 
     nuecc_cut3,_ = CAFpic.make_cuts(nuecc_2,Etheta=Etheta3)
     events_cut[0,seed,truthcut_iter] = CAFpic.number_events(nuecc_cut3)
+    print('nue')
+    
     nue_cut3,_ = CAFpic.make_cuts(nue_2,Etheta=Etheta3)
     events_cut[1,seed,truthcut_iter] = CAFpic.number_events(nue_cut3)
     truthcut_iter+=1
@@ -295,19 +350,30 @@ for seed in seeds: #Iterate over n random universes, with different seed each ti
     nue_cute = nue_cut3[abs(nue_cut3.loc[:,f'{CAFpic.primprefix}pdg']) == 11]
     nuecc_cute = nuecc_cut3[abs(nuecc_cut3.loc[:,f'{CAFpic.primprefix}pdg']) == 11]
 
-    if seed == 0:
-      ax = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$',alpha=0.8)
-      ax.set_xlim([ethetamin,ethetamax])
+    if seed < 2:
+      ax,_ = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$ [GeV rad$^2$]',alpha=0.8,
+        bins=ethetabins)
+      #ax.set_xlim([ethetamin,ethetamax])
       plotters.save_plot(f'etheta3_cut{seed}')
+      ax.set_ylim([ethetamin_y,ethetamax_y])
+      plotters.save_plot(f'etheta3_cut_zoom{seed}')
       plt.close()
-      ax = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}genE',precut_signal,xlabel=r'$E_e$',alpha=0.8,
+      ax,_ = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}genE',precut_signal,xlabel=r'$E_e$ [GeV]',alpha=0.8,
         bins=erecobins)
       ax.set_xlim([emin,emax])
       plotters.save_plot(f'e3_cut{seed}')
+      ax.set_ylim([emin_y,emax_y])
+      plotters.save_plot(f'e3_cut_zoomy{seed}')
       plt.close()
-      ax = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}thetal',precut_signal,xlabel=r'$\theta_e$',alpha=0.8)
+      ax,_ = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}thetal',precut_signal,xlabel=r'$\theta_e$ [rad]',alpha=0.8)
       ax.set_xlim([thetamin,thetamax])
       plotters.save_plot(f'theta3_cut{seed}')
+      plt.close()
+      ax,_ = CAFplotters.back_sig_hist([nue_cute,nuecc_cute],labels,f'{CAFpic.primprefix}thetal',precut_signal,xlabel=r'$\theta_e$ [rad]',alpha=0.8,
+        bins=np.arange(0,0.4,0.05))
+      plotters.save_plot(f'theta3_cut_zoom{seed}')
+      ax.set_ylim([thetamin_y,thetamax_y])
+      plotters.save_plot(f'theta3_cut_zoomxy{seed}')
       plt.close()
 
     t4 = time()
@@ -334,26 +400,33 @@ for seed in seeds: #Iterate over n random universes, with different seed each ti
     recocut_iter+=1
 
     #Get confusion matrices
-    shwconfusion[0,seed,:,:] = CAFpic.get_shw_confusion_matrix(nuecc_nreco_pot1,nuecc_mcprim_pot1,n=nshw)
-    trkconfusion[0,seed,:,:] = CAFpic.get_trk_confusion_matrix(nuecc_nreco_pot1,nuecc_mcprim_pot1,n=ntrk)
-    
-    shwconfusion[1,seed,:,:] = CAFpic.get_shw_confusion_matrix(nue_nreco_pot1,nue_mcprim_pot1,n=nshw)
-    trkconfusion[1,seed,:,:] = CAFpic.get_trk_confusion_matrix(nue_nreco_pot1,nue_mcprim_pot1,n=ntrk)
+    if seed == 999:
+      shwconfusion[0,seed,:,:] = CAFpic.get_shw_confusion_matrix(nuecc_nreco_pot1,nuecc_mcprim_pot1,n=nshw)
+      trkconfusion[0,seed,:,:] = CAFpic.get_trk_confusion_matrix(nuecc_nreco_pot1,nuecc_mcprim_pot1,n=ntrk)
+      
+      shwconfusion[1,seed,:,:] = CAFpic.get_shw_confusion_matrix(nue_nreco_pot1,nue_mcprim_pot1,n=nshw)
+      trkconfusion[1,seed,:,:] = CAFpic.get_trk_confusion_matrix(nue_nreco_pot1,nue_mcprim_pot1,n=ntrk)
     #stubconfusion?
 
     #FV containment - truth interaction vertex
     nuecc_fvindeces = CAFpic.FV_cut(nuecc_mc_pot1)
-    events_cut_reco[0,seed,recocut_iter] = len(nuecc_fvindeces)
+    events_cut_reco[0,seed,recocut_iter] = len(nuecc_fvindeces) #Get nuecc_fvindeces from truth level cuts
     nue_fvindeces = CAFpic.FV_cut(nue_mc_pot1)
-    events_cut_reco[1,seed,recocut_iter] = len(nue_fvindeces)
+    events_cut_reco[1,seed,recocut_iter] = len(nue_fvindeces) #Get nue_fvindeces from truth level cuts
     recocut_iter+=1
 
+    #Modify nreco values to keep only FV indeces
+    nuecc_nreco_pot1 = CAFpic.get_df_keepindeces(nuecc_nreco_pot1,nuecc_fvindeces)
+    nue_nreco_pot1 = CAFpic.get_df_keepindeces(nue_nreco_pot1,nue_fvindeces)
+
+
     #Number showers
-    if seed == 0:
-      ax = CAFplotters.back_sig_hist([nue_nreco_pot1,nuecc_nreco_pot1],labels,f'{CAFpic.recoprefix}nshw',precut_signal,xlabel=r'$n_{shw}$',alpha=0.8,
+    if seed < 2:
+      ax,_ = CAFplotters.back_sig_hist([nue_nreco_pot1,nuecc_nreco_pot1],labels,f'{CAFpic.recoprefix}nshw',precut_signal,xlabel=r'$n_{shw}$',alpha=0.8,
         bins=[0,1,2,3,4,5])
+      nshw_miny,nshw_maxy = ax.get_ylim()
       ax.set_xlim([0,5])
-      plotters.save_plot(f'nshw_precut')
+      plotters.save_plot(f'nshw_precut{seed}')
       plt.close()
 
     cut1,_ = CAFpic.cut_nshws(nuecc_nreco_pot1.loc[nuecc_fvindeces],1) #Keep only events with one reconstructed shower
@@ -363,19 +436,22 @@ for seed in seeds: #Iterate over n random universes, with different seed each ti
     events_cut_reco[1,seed,recocut_iter] = cut1_nue.index.drop_duplicates().shape[0]
     recocut_iter+=1
 
-    if seed == 0:
-      ax = CAFplotters.back_sig_hist([cut1_nue,cut1],labels,f'{CAFpic.recoprefix}nshw',precut_signal,xlabel=r'$n_{shw}$',alpha=0.8,
+    if seed < 2:
+      ax,_ = CAFplotters.back_sig_hist([cut1_nue,cut1],labels,f'{CAFpic.recoprefix}nshw',precut_signal,xlabel=r'$n_{shw}$',alpha=0.8,
         bins=[0,1,2,3,4,5])
       ax.set_xlim([0,5])
-      plotters.save_plot(f'nshw_cut')
+      plotters.save_plot(f'nshw_cut{seed}')
+      ax.set_ylim([nshw_miny,nshw_maxy])
+      plotters.save_plot(f'nshw_cut_zoomy{seed}')
       plt.close()
 
     #Number tracks
-    if seed == 0:
-      ax = CAFplotters.back_sig_hist([cut1_nue,cut1],labels,f'{CAFpic.recoprefix}ntrk',precut_signal,xlabel=r'$n_{trk}$',alpha=0.8,
+    if seed < 2:
+      ax,_ = CAFplotters.back_sig_hist([cut1_nue,cut1],labels,f'{CAFpic.recoprefix}ntrk',precut_signal,xlabel=r'$n_{trk}$',alpha=0.8,
         bins=[0,1,2,3,4,5])
+      ntrk_miny,ntrk_maxy = ax.get_ylim()
       ax.set_xlim([0,5])
-      plotters.save_plot(f'ntrk_precut')
+      plotters.save_plot(f'ntrk_precut{seed}')
       plt.close()
 
     cut2,_ = CAFpic.cut_ntrks(cut1,0) #Keep only events with one reconstructed shower
@@ -389,18 +465,20 @@ for seed in seeds: #Iterate over n random universes, with different seed each ti
     nue_shw_pot1 = CAFpic.get_df_keepindeces(nue_shw_pot1,cut2_indeces)
     recocut_iter+=1
 
-    if seed == 0:
-      ax = CAFplotters.back_sig_hist([cut2_nue,cut2],labels,f'{CAFpic.recoprefix}ntrk',precut_signal,xlabel=r'$n_{trk}$',alpha=0.8,
+    if seed < 2:
+      ax,_ = CAFplotters.back_sig_hist([cut2_nue,cut2],labels,f'{CAFpic.recoprefix}ntrk',precut_signal,xlabel=r'$n_{trk}$',alpha=0.8,
         bins=[0,1,2,3,4,5])
       ax.set_xlim([0,5])
-      plotters.save_plot(f'ntrk_cut')
+      plotters.save_plot(f'ntrk_cut{seed}')
+      ax.set_ylim([ntrk_miny,ntrk_maxy])
+      plotters.save_plot(f'ntrk_cut_zoomy{seed}')
       plt.close()
 
     #Shower energy
-    if seed == 0:
+    if seed < 2:
       CAFplotters.back_sig_hist([nue_shw_pot1,nuecc_shw_pot1],labels,f'{CAFpic.shwprefix}bestplane_energy',precut_signal,
-      xlabel=r'$E_{reco}$',alpha=0.8,bins=erecobins)
-      plotters.save_plot(f'ereco_precut')
+      xlabel=r'$E_{reco}$ [GeV]',alpha=0.8,bins=erecobins)
+      plotters.save_plot(f'ereco_precut{seed}')
       plt.close()
     nuecc_shwE = CAFpic.cut_recoE(nuecc_shw_pot1)
     events_cut_reco[0,seed,recocut_iter] = len(nuecc_shwE)
@@ -409,19 +487,19 @@ for seed in seeds: #Iterate over n random universes, with different seed each ti
     events_cut_reco[1,seed,recocut_iter] = len(nue_shwE)
     recocut_iter+=1
 
-    if seed == 0:
+    if seed < 2:
       CAFplotters.back_sig_hist([nue_shw_pot1.loc[nue_shwE],nuecc_shw_pot1.loc[nuecc_shwE]],labels,f'{CAFpic.shwprefix}bestplane_energy',precut_signal,
-      xlabel=r'$E_{reco}$',alpha=0.8,bins=erecobins)
-      plotters.save_plot(f'ereco_cut')
+      xlabel=r'$E_{reco}$ [GeV]',alpha=0.8,bins=erecobins)
+      plotters.save_plot(f'ereco_cut{seed}')
       plt.close()
 
     #Electron razzle score
     bins = np.arange(0,1,0.1)
-    if seed == 0:
-      ax = CAFplotters.back_sig_hist([nue_shw_pot1.loc[nue_shwE],nuecc_shw_pot1.loc[nuecc_shwE]],labels,f'{CAFpic.shwprefix}razzle.electronScore',precut_signal,
+    if seed < 2:
+      ax,_ = CAFplotters.back_sig_hist([nue_shw_pot1.loc[nue_shwE],nuecc_shw_pot1.loc[nuecc_shwE]],labels,f'{CAFpic.shwprefix}razzle.electronScore',precut_signal,
       xlabel=r'Electron Razzle Score',alpha=0.8,bins=bins)
       ax.set_xlim([0,1])
-      plotters.save_plot(f'erazzle_precut')
+      plotters.save_plot(f'erazzle_precut{seed}')
       plt.close()
     cut3 = CAFpic.cut_razzlescore(nuecc_shw_pot1.loc[nuecc_shwE],cutoff=razzlecutoff)
     events_cut_reco[0,seed,recocut_iter] = cut3.index.drop_duplicates().shape[0]
@@ -431,11 +509,11 @@ for seed in seeds: #Iterate over n random universes, with different seed each ti
     events_cut_reco[1,seed,recocut_iter] = cut3_nue.index.drop_duplicates().shape[0]
     recocut_iter+=1
 
-    if seed == 0:
-      ax = CAFplotters.back_sig_hist([cut3_nue,cut3],labels,f'{CAFpic.shwprefix}razzle.electronScore',precut_signal,
+    if seed < 2:
+      ax,_ = CAFplotters.back_sig_hist([cut3_nue,cut3],labels,f'{CAFpic.shwprefix}razzle.electronScore',precut_signal,
       xlabel=r'Electron Razzle Score',alpha=0.8,bins=bins)
       ax.set_xlim([0,1])
-      plotters.save_plot(f'erazzle_cut')
+      plotters.save_plot(f'erazzle_cut{seed}')
       plt.close()
 
     #Calc thetae and Etheta^2
@@ -453,102 +531,148 @@ for seed in seeds: #Iterate over n random universes, with different seed each ti
 
     #print(nue_2.head(20),nuecc_2.head(20))
 
-    if seed == 0:
-      ax = CAFplotters.back_sig_hist([nue_2,nuecc_2],labels,f'{CAFpic.shwprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$',alpha=0.8)
+    if seed < 2:
+      ax,_ = CAFplotters.back_sig_hist([nue_2,nuecc_2],labels,f'{CAFpic.shwprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$ [GeV rad$^2$]',alpha=0.8)
       ethetamin,ethetamax = ax.get_xlim()
       plotters.save_plot(f'reco_etheta_precut{seed}')
       plt.close()
 
-      bins = np.arange(0,0.005,0.001)
-      ax = CAFplotters.back_sig_hist([nue_2,nuecc_2],labels,f'{CAFpic.shwprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$',alpha=0.8,
-        bins=bins)
+      etheta_zoom_bins = np.arange(0,0.01,0.001)
+      # ax,_ = CAFplotters.back_sig_hist([nue_2,nuecc_2],labels,f'{CAFpic.shwprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$ [GeV rad$^2$]',
+      #   annotate=False,alpha=0.8,bins=etheta_zoom_bins)
+      ax,_ = CAFplotters.back_sig_hist([nue_2,nuecc_2],labels,f'{CAFpic.shwprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$ [GeV rad$^2$]',
+        annotate=False,alpha=0.8,bins=np.arange(0,0.01,0.001))
       ethetamin_zoom,ethetamax_zoom = ax.get_xlim()
       plotters.save_plot(f'reco_etheta_precut_zoom{seed}')
       plt.close()
-      #CAFplotters.back_sig_hist([nue_2,nuecc_2],labels,f'{CAFpic.shwprefix}bestplane_energy',precut_signal,xlabel=r'$E_e$',alpha=0.8)
-      #plotters.save_plot(f'reco_e_precut{seed}')
-      ax = CAFplotters.back_sig_hist([nue_2,nuecc_2],labels,f'{CAFpic.shwprefix}thetal',precut_signal,xlabel=r'$\theta_e$',alpha=0.8)
-      thetamin,thetamax = ax.get_xlim()
+      CAFplotters.back_sig_hist([nue_2,nuecc_2],labels,f'{CAFpic.shwprefix}bestplane_energy',precut_signal,xlabel=r'$E_e$ [GeV]',alpha=0.8)
+      plotters.save_plot(f'reco_e_precut{seed}')
+      ax,_ = CAFplotters.back_sig_hist([nue_2,nuecc_2],labels,f'{CAFpic.shwprefix}thetal',precut_signal,xlabel=r'$\theta_e$ [rad]',alpha=0.8)
+      #thetamin,thetamax = ax.get_xlim()
+      thetamin_y,thetamax_y = ax.get_ylim()
       plotters.save_plot(f'reco_theta_precut{seed}')
       plt.close()
-
-    nuecc_cut1,_ = CAFpic.make_reco_cuts(nuecc_2,Etheta=Etheta1)
-    events_cut_reco[0,seed,recocut_iter] = CAFpic.number_events(nuecc_cut1)
-    nue_cut1,_ = CAFpic.make_reco_cuts(nue_2,Etheta=Etheta1)
-    events_cut_reco[1,seed,recocut_iter] = CAFpic.number_events(nue_cut1)
-    recocut_iter+=1
-
-    if seed == 0:
-      ax = CAFplotters.back_sig_hist([nue_cut1,nuecc_cut1],labels,f'{CAFpic.shwprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$',alpha=0.8)
-      ax.set_xlim([ethetamin,ethetamax])
-      plotters.save_plot(f'reco_etheta_cut1{seed}')
+      ax,_ = CAFplotters.back_sig_hist([nue_2,nuecc_2],labels,f'{CAFpic.shwprefix}thetal',precut_signal,xlabel=r'$\theta_e$ [rad]',alpha=0.8,
+        bins=thetabins)
+      thetamin_y,thetamax_y = ax.get_ylim()
+      plotters.save_plot(f'reco_theta_precut_zoom{seed}')
       plt.close()
 
-      ax = CAFplotters.back_sig_hist([nue_cut1,nuecc_cut1],labels,f'{CAFpic.shwprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$',alpha=0.8,
-        bins=bins)
+    #Make cuts and prepare seperate dfs for shower and track confusion matrices
+    print('nuecc')
+    nuecc_cut1,_ = CAFpic.make_reco_cuts(nuecc_2,Etheta=Etheta1)
+    nuecc_cut1_indeces = nuecc_cut1.index.drop_duplicates()
+    nuecc_nreco_pot1_cut1 = CAFpic.get_df_keepindeces(nuecc_nreco_pot1,nuecc_cut1_indeces)
+    nuecc_mcprim_pot1_cut1 = CAFpic.get_df_keepindeces(nuecc_mcprim_pot1,nuecc_cut1_indeces)
+    events_cut_reco[0,seed,recocut_iter] = CAFpic.number_events(nuecc_cut1)
+
+    print('nue')
+    nue_cut1,_ = CAFpic.make_reco_cuts(nue_2,Etheta=Etheta1)
+    nue_cut1_indeces = nue_cut1.index.drop_duplicates()
+    nue_nreco_pot1_cut1 = CAFpic.get_df_keepindeces(nue_nreco_pot1,nue_cut1_indeces)
+    nue_mcprim_pot1_cut1 = CAFpic.get_df_keepindeces(nue_mcprim_pot1,nue_cut1_indeces)
+    events_cut_reco[1,seed,recocut_iter] = CAFpic.number_events(nue_cut1)
+
+    recocut_iter+=1
+
+    #Get confusion matrices
+    #print(nuecc_mcprim_pot1_cut1.keys())
+
+    if seed == 999:
+      shwconfusion_cut1[0,seed,:,:] = CAFpic.get_shw_confusion_matrix(nuecc_nreco_pot1_cut1,nuecc_mcprim_pot1_cut1,n=nshw)
+      trkconfusion_cut1[0,seed,:,:] = CAFpic.get_trk_confusion_matrix(nuecc_nreco_pot1_cut1,nuecc_mcprim_pot1_cut1,n=ntrk)
+      
+      shwconfusion_cut1[1,seed,:,:] = CAFpic.get_shw_confusion_matrix(nue_nreco_pot1_cut1,nue_mcprim_pot1_cut1,n=nshw)
+      trkconfusion_cut1[1,seed,:,:] = CAFpic.get_trk_confusion_matrix(nue_nreco_pot1_cut1,nue_mcprim_pot1_cut1,n=ntrk)
+
+    if seed < 2:
+      ax,_ = CAFplotters.back_sig_hist([nue_cut1,nuecc_cut1],labels,f'{CAFpic.shwprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$ [GeV rad$^2$]',alpha=0.8)
+      #ax.set_xlim([ethetamin,ethetamax])
+      plotters.save_plot(f'reco_etheta_cut1_{seed}')
+      plt.close()
+
+      ax,_ = CAFplotters.back_sig_hist([nue_cut1,nuecc_cut1],labels,f'{CAFpic.shwprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$ [GeV rad$^2$]',alpha=0.8,
+        bins=etheta_zoom_bins)
       ax.set_xlim([ethetamin_zoom,ethetamax_zoom])
       plotters.save_plot(f'reco_etheta_cut1_zoom{seed}')
       plt.close()
-      #CAFplotters.back_sig_hist([nue_cut1,nuecc_cut1],labels,f'{CAFpic.shwprefix}bestplane_energy',precut_signal,xlabel=r'$E_e$',alpha=0.8)
-      #plotters.save_plot(f'reco_e_cut1{seed}')
-      #plt.close()
-      ax = CAFplotters.back_sig_hist([nue_cut1,nuecc_cut1],labels,f'{CAFpic.shwprefix}thetal',precut_signal,xlabel=r'$\theta_e$',alpha=0.8)
-      ax.set_xlim([thetamin,thetamax])
-      plotters.save_plot(f'reco_theta_cut1{seed}')
+      CAFplotters.back_sig_hist([nue_cut1,nuecc_cut1],labels,f'{CAFpic.shwprefix}bestplane_energy',precut_signal,xlabel=r'$E_e$ [GeV]',alpha=0.8)
+      plotters.save_plot(f'reco_e_cut1_{seed}')
       plt.close()
+      ax,_ = CAFplotters.back_sig_hist([nue_cut1,nuecc_cut1],labels,f'{CAFpic.shwprefix}thetal',precut_signal,xlabel=r'$\theta_e$ [rad]',alpha=0.8,
+        bins=thetabins)
+      #ax.set_xlim([thetamin,thetamax])
+      plotters.save_plot(f'reco_theta_cut1_{seed}')
+      ax.set_ylim([thetamin_y,thetamax_y])
+      plotters.save_plot(f'reco_theta_cut1_zoom{seed}')
+      plt.close()
+    print('nuecc')
 
     nuecc_cut2,_ = CAFpic.make_reco_cuts(nuecc_2,Etheta=Etheta2)
     events_cut_reco[0,seed,recocut_iter] = CAFpic.number_events(nuecc_cut2)
+    print('nue')
+    
     nue_cut2,_ = CAFpic.make_reco_cuts(nue_2,Etheta=Etheta2)
     events_cut_reco[1,seed,recocut_iter] = CAFpic.number_events(nue_cut2)
     recocut_iter+=1
 
-    if seed == 0:
-      ax = CAFplotters.back_sig_hist([nue_cut2,nuecc_cut2],labels,f'{CAFpic.shwprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$',alpha=0.8)
-      ax.set_xlim([ethetamin,ethetamax])
-      plotters.save_plot(f'reco_etheta_cut2{seed}')
+    if seed < 2:
+      ax,_ = CAFplotters.back_sig_hist([nue_cut2,nuecc_cut2],labels,f'{CAFpic.shwprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$ [GeV rad$^2$]',alpha=0.8)
+      #ax.set_xlim([ethetamin,ethetamax])
+      plotters.save_plot(f'reco_etheta_cut2_{seed}')
       plt.close()
 
-      ax = CAFplotters.back_sig_hist([nue_cut2,nuecc_cut2],labels,f'{CAFpic.shwprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$',alpha=0.8,
-        bins=bins)
+      ax,_ = CAFplotters.back_sig_hist([nue_cut2,nuecc_cut2],labels,f'{CAFpic.shwprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$ [GeV rad$^2$]',alpha=0.8,
+        bins=etheta_zoom_bins)
       ax.set_xlim([ethetamin_zoom,ethetamax_zoom])
       plotters.save_plot(f'reco_etheta_cut2_zoom{seed}')
       plt.close()
-      #CAFplotters.back_sig_hist([nue_cut2,nuecc_cut2],labels,f'{CAFpic.shwprefix}bestplane_energy',precut_signal,xlabel=r'$E_e$',alpha=0.8)
-      #plotters.save_plot(f'reco_e_cut2{seed}')
-      #plt.close()
-      ax = CAFplotters.back_sig_hist([nue_cut2,nuecc_cut2],labels,f'{CAFpic.shwprefix}thetal',precut_signal,xlabel=r'$\theta_e$',alpha=0.8)
-      ax.set_xlim([thetamin,thetamax])
-      plotters.save_plot(f'reco_theta_cut2{seed}')
+      CAFplotters.back_sig_hist([nue_cut2,nuecc_cut2],labels,f'{CAFpic.shwprefix}bestplane_energy',precut_signal,xlabel=r'$E_e$ [GeV]',alpha=0.8)
+      plotters.save_plot(f'reco_e_cut2_{seed}')
       plt.close()
+      ax,_ = CAFplotters.back_sig_hist([nue_cut2,nuecc_cut2],labels,f'{CAFpic.shwprefix}thetal',precut_signal,xlabel=r'$\theta_e$ [rad]',alpha=0.8,
+        bins=thetabins)
+      #ax.set_xlim([thetamin,thetamax])
+      plotters.save_plot(f'reco_theta_cut2_{seed}')
+      ax.set_ylim([thetamin_y,thetamax_y])
+      plotters.save_plot(f'reco_theta_cut2_zoom{seed}')
+      plt.close()
+
+    print('nuecc')
 
     nuecc_cut3,_ = CAFpic.make_reco_cuts(nuecc_2,Etheta=Etheta3)
     events_cut_reco[0,seed,recocut_iter] = CAFpic.number_events(nuecc_cut3)
+    print('nue')
+    
     nue_cut3,_ = CAFpic.make_reco_cuts(nue_2,Etheta=Etheta3)
     events_cut_reco[1,seed,recocut_iter] = CAFpic.number_events(nue_cut3)
     recocut_iter+=1
 
-    if seed == 0:
-      ax = CAFplotters.back_sig_hist([nue_cut3,nuecc_cut3],labels,f'{CAFpic.shwprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$',alpha=0.8)
-      ax.set_xlim([ethetamin,ethetamax])
-      plotters.save_plot(f'reco_etheta_cut3{seed}')
+    if seed < 2:
+      ax,_ = CAFplotters.back_sig_hist([nue_cut3,nuecc_cut3],labels,f'{CAFpic.shwprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$ [GeV rad$^2$]',alpha=0.8)
+      #ax.set_xlim([ethetamin,ethetamax])
+      plotters.save_plot(f'reco_etheta_cut3_{seed}')
       plt.close()
 
-      ax = CAFplotters.back_sig_hist([nue_cut3,nuecc_cut3],labels,f'{CAFpic.shwprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$',alpha=0.8,
-        bins=bins)
+      ax,_ = CAFplotters.back_sig_hist([nue_cut3,nuecc_cut3],labels,f'{CAFpic.shwprefix}Etheta2',precut_signal,xlabel=r'$E_e\theta_e^2$ [GeV rad$^2$]',alpha=0.8,
+        bins=etheta_zoom_bins)
       ax.set_xlim([ethetamin_zoom,ethetamax_zoom])
       plotters.save_plot(f'reco_etheta_cut3_zoom{seed}')
       plt.close()
-      #CAFplotters.back_sig_hist([nue_cut3,nuecc_cut3],labels,f'{CAFpic.shwprefix}bestplane_energy',precut_signal,xlabel=r'$E_e$',alpha=0.8)
-      #plotters.save_plot(f'reco_e_cut3{seed}')
-      #plt.close()
-      ax = CAFplotters.back_sig_hist([nue_cut3,nuecc_cut3],labels,f'{CAFpic.shwprefix}thetal',precut_signal,xlabel=r'$\theta_e$',alpha=0.8)
-      ax.set_xlim([thetamin,thetamax])
-      plotters.save_plot(f'reco_theta_cut3{seed}')
+      CAFplotters.back_sig_hist([nue_cut3,nuecc_cut3],labels,f'{CAFpic.shwprefix}bestplane_energy',precut_signal,xlabel=r'$E_e$ [GeV]',alpha=0.8)
+      plotters.save_plot(f'reco_e_cut3_{seed}')
+      plt.close()
+      ax,_ = CAFplotters.back_sig_hist([nue_cut3,nuecc_cut3],labels,f'{CAFpic.shwprefix}thetal',precut_signal,xlabel=r'$\theta_e$ [rad]',alpha=0.8,
+        bins=thetabins)
+      #ax.set_xlim([thetamin,thetamax])
+      plotters.save_plot(f'reco_theta_cut3_{seed}')
+      ax.set_ylim([thetamin_y,thetamax_y])
+      plotters.save_plot(f'reco_theta_cut3_zoom{seed}')
       plt.close()
 
     
-
+    print(f'nuecc passed cut1 ind {nuecc_cut3.index.drop_duplicates()}')
+    print(f'nue passed cut1 ind {nue_cut3.index.drop_duplicates()}')
     #POT
     events_cut_reco[:,seed,recocut_iter] = pot1
 
@@ -579,22 +703,37 @@ for row in range(2): #Iterate by rows, one for each sample
       for j in range(nshw):
         shwconfusion[row,-2,i,j] = np.std(shwconfusion[row,:-2,i,j]) #Mean value of ith jth comp, exclude last two since these are for std,mean
         shwconfusion[row,-1,i,j] = np.mean(shwconfusion[row,:-2,i,j]) #Mean value of ith jth comp, exclude last two since these are for std,mean 
+        shwconfusion_cut1[row,-2,i,j] = np.std(shwconfusion_cut1[row,:-2,i,j]) #Mean value of ith jth comp, exclude last two since these are for std,mean
+        shwconfusion_cut1[row,-1,i,j] = np.mean(shwconfusion_cut1[row,:-2,i,j]) #Mean value of ith jth comp, exclude last two since these are for std,mean 
 
     #sns.heatmap(shwconfusion[n], annot=True)
     np.savetxt(f'{DATA_DIR}shwconfusion_std_{sample}{suffix}.csv',shwconfusion[row,-2],delimiter=',')
     np.savetxt(f'{DATA_DIR}shwconfusion_mean_{sample}{suffix}.csv',shwconfusion[row,-1],delimiter=',')
     np.savetxt(f'{DATA_DIR}shwconfusion_n0_{sample}{suffix}.csv',shwconfusion[row,0],delimiter=',')
 
+    np.savetxt(f'{DATA_DIR}shwconfusion_std_cut1{sample}{suffix}.csv',shwconfusion_cut1[row,-2],delimiter=',')
+    np.savetxt(f'{DATA_DIR}shwconfusion_mean_cut1{sample}{suffix}.csv',shwconfusion_cut1[row,-1],delimiter=',')
+    np.savetxt(f'{DATA_DIR}shwconfusion_n0_cut1{sample}{suffix}.csv',shwconfusion_cut1[row,0],delimiter=',')
+
     for i in range(ntrk):
       for j in range(ntrk):
         trkconfusion[row,-2,i,j] = np.std(trkconfusion[row,:-2,i,j]) #Mean value of ith jth comp, exclude last two since these are for std,mean
         trkconfusion[row,-1,i,j] = np.mean(trkconfusion[row,:-2,i,j]) #Mean value of ith jth comp, exclude last two since these are for std,mean 
+        trkconfusion_cut1[row,-2,i,j] = np.std(trkconfusion_cut1[row,:-2,i,j]) #Mean value of ith jth comp, exclude last two since these are for std,mean
+        trkconfusion_cut1[row,-1,i,j] = np.mean(trkconfusion_cut1[row,:-2,i,j]) #Mean value of ith jth comp, exclude last two since these are for std,mean 
 
     np.savetxt(f'{DATA_DIR}trkconfusion_std_{sample}{suffix}.csv',trkconfusion[row,-2],delimiter=',')
     np.savetxt(f'{DATA_DIR}trkconfusion_mean_{sample}{suffix}.csv',trkconfusion[row,-1],delimiter=',')
     np.savetxt(f'{DATA_DIR}trkconfusion_n0_{sample}{suffix}.csv',trkconfusion[row,0],delimiter=',')
 
+    np.savetxt(f'{DATA_DIR}trkconfusion_std_cut1{sample}{suffix}.csv',trkconfusion_cut1[row,-2],delimiter=',')
+    np.savetxt(f'{DATA_DIR}trkconfusion_mean_cut1{sample}{suffix}.csv',trkconfusion_cut1[row,-1],delimiter=',')
+    np.savetxt(f'{DATA_DIR}trkconfusion_n0_cut1{sample}{suffix}.csv',trkconfusion_cut1[row,0],delimiter=',')
 
+    # print(trkconfusion_cut1[row,0])
+    # print(trkconfusion[row,0])
+    # print(shwconfusion_cut1[row,0])
+    # print(shwconfusion[row,0])
 
 
 
